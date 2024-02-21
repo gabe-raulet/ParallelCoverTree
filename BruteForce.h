@@ -13,6 +13,8 @@ public:
     size_t radii_query(const Point& query, double radius, std::vector<int64_t>& ids);
     size_t num_points() const { return points.size(); }
 
+    const std::vector<Point>& get_points() const { return points; }
+
 private:
     std::vector<Point> points;
 };

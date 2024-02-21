@@ -27,9 +27,9 @@ int main(int argc, char *argv[])
     radius = find_double_arg(argc, argv, "-r", radius);
     seed = find_int_arg(argc, argv, "-s", seed);
 
-    std::vector<Point> points = Point::random_points(num_points, d, seed);
 
-    BruteForce bf(points);
+    BruteForce bf(Point::random_points(num_points, d, seed));
+    const std::vector<Point>& points = bf.get_points();
     std::vector<int64_t> ids;
 
     for (size_t i = 0; i < points.size(); ++i)
