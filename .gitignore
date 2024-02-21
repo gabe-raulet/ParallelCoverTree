@@ -3,3 +3,4 @@
 *.o
 main
 test_point
+test_brute_force
