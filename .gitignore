@@ -1,0 +1,5 @@
+*.dSYM
+*.out
+*.o
+main
+test_point
