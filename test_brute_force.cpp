@@ -8,21 +8,24 @@ int main(int argc, char *argv[])
 {
     int num_points = 10;
     int seed = -1;
+    double radius = 0.25;
 
     if (find_arg_idx(argc, argv, "-h") >= 0)
     {
         std::cerr << "Usage: " << argv[0] << " [options]" << std::endl;
-        std::cerr << "Options: -n INT   number of points [default: " << num_points << "]" << std::endl;
-        std::cerr << "         -s INT   seed [default: random]" << std::endl;
-        std::cerr << "         -h       help message" << std::endl;
+        std::cerr << "Options: -n INT    number of points [default: " << num_points << "]" << std::endl;
+        std::cerr << "         -r FLOAT  query radius [default: " << radius << "]" << std::endl;
+        std::cerr << "         -s INT    seed [default: random]" << std::endl;
+        std::cerr << "         -h        help message" << std::endl;
         return -1;
     }
 
     num_points = find_int_arg(argc, argv, "-n", num_points);
+    radius = find_double_arg(argc, argv, "-r", radius);
     seed = find_int_arg(argc, argv, "-s", seed);
 
-    std::cout << "num_points=" << num_points << std::endl;
-    std::cout << "seed=" << seed << std::endl;
+    std::cout << radius << std::endl;
+
 
     return 0;
 }
