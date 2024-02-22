@@ -250,3 +250,13 @@ bool CoverTree::is_covering() const
 
     return true;
 }
+
+double CoverTree::vertices_per_level() const
+{
+    size_t sum = 0;
+
+    for (int64_t i = 0; i < num_levels(); ++i)
+        sum += levelset[i].size();
+
+    return (sum + 0.0) / (levelset.size() + 0.0);
+}

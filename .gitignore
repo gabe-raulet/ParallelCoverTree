@@ -5,3 +5,4 @@ main
 test_point
 test_brute_force
 test_cover_tree
+time_cover_tree

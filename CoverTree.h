@@ -26,6 +26,8 @@ public:
 
     const std::vector<Point>& get_points() const { return points; }
 
+    double vertices_per_level() const;
+
 private:
     std::vector<Point> points;
     double max_radius;
