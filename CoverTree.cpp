@@ -32,7 +32,6 @@ size_t CoverTree::get_level_ids(int64_t vertex_level, std::vector<int64_t>& leve
 
 size_t CoverTree::radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const
 {
-    radius /= max_radius;
     std::unordered_set<int64_t> idset;
     std::vector<int64_t> stack = {0};
 
@@ -49,7 +48,7 @@ size_t CoverTree::radii_query(const Point& query, double radius, std::vector<int
         {
             v = mychildren[i];
 
-            if (distance(query, points[get_point_id(v)]) <= radius + vertex_ball_radius(v))
+            if (distance(query, points[get_point_id(v)]) <= radius + max_radius*vertex_ball_radius(v))
             {
                 stack.push_back(v);
             }
@@ -125,9 +124,7 @@ void CoverTree::build_tree()
         stack.pop_back();
 
         size_t n_descendants = descendants.size();
-        assert(n_descendants >= 1);
-        assert(get_point_id(parent_id) == descendants[0]);
-        //assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
+        assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
 
         if (n_descendants == 1)
             continue;
@@ -176,6 +173,10 @@ void CoverTree::build_tree()
             stack.emplace_back(add_vertex(child_pt, parent_id), next_descendants);
         }
     }
+
+    assert(is_full());
+    assert(is_nested());
+    assert(is_covering());
 }
 
 bool CoverTree::is_full() const
@@ -187,6 +188,64 @@ bool CoverTree::is_full() const
 
     for (size_t i = 0; i < num_points(); ++i)
         if (!bits[i]) return false;
+
+    return true;
+}
+
+bool CoverTree::is_nested() const
+{
+    std::vector<int64_t> stack = {0};
+    std::vector<int64_t> mychildren;
+    int64_t u, v;
+    size_t m;
+    bool found;
+
+    while (stack.size() != 0)
+    {
+        u = stack.back(); stack.pop_back();
+        m = get_child_ids(u, mychildren);
+
+        found = false;
+        for (size_t i = 0; i < m; ++i)
+        {
+            v = mychildren[i];
+            stack.push_back(v);
+
+            if (get_point_id(u) == get_point_id(v))
+            {
+                if (found) { return false; }
+                found = true;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool CoverTree::is_covering() const
+{
+    std::vector<int64_t> stack = {0};
+    std::vector<int64_t> mychildren;
+    int64_t u, v;
+    size_t m;
+    double ball_radius, d;
+
+    while (stack.size() != 0)
+    {
+        u = stack.back(); stack.pop_back();
+        m = get_child_ids(u, mychildren);
+        ball_radius = vertex_ball_radius(u);
+
+        for (size_t i = 0; i < m; ++i)
+        {
+            v = mychildren[i];
+            stack.push_back(v);
+            d = point_dist(get_point_id(u), get_point_id(v));
+
+            if (d > ball_radius)
+                return false;
+        }
+    }
 
     return true;
 }
