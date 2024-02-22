@@ -9,7 +9,7 @@
 class CoverTree
 {
 public:
-    CoverTree(const std::vector<Point>& points) : points(points) { build_tree(); }
+    CoverTree(const std::vector<Point>& points) : points(points) { build_tree(); assert(is_full()); }
 
     size_t num_vertices() const { return pt.size(); }
     size_t num_points() const { return points.size(); }
@@ -41,6 +41,8 @@ private:
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double point_dist(int64_t point_id1, int64_t point_id2) const;
     double vertex_ball_radius(int64_t vertex_id) const;
+
+    bool is_full() const;
 };
 
 #endif

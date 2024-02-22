@@ -177,3 +177,16 @@ void CoverTree::build_tree()
         }
     }
 }
+
+bool CoverTree::is_full() const
+{
+    std::vector<bool> bits(num_points(), false);
+
+    for (size_t i = 0; i < num_vertices(); ++i)
+        bits[get_point_id(i)] = true;
+
+    for (size_t i = 0; i < num_points(); ++i)
+        if (!bits[i]) return false;
+
+    return true;
+}
