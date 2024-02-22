@@ -63,8 +63,6 @@ size_t CoverTree::radii_query(const Point& query, double radius, std::vector<int
     }
 
     ids.assign(idset.begin(), idset.end());
-    std::sort(ids.begin(), ids.end());
-
     return ids.size();
 }
 
