@@ -1,6 +1,6 @@
 all: test_point test_brute_force test_cover_tree time_cover_tree
 
-FLAGS=-std=c++17 -O2
+FLAGS=-std=c++17 -O2 -fopenmp
 
 test_point: test_point.cpp Point.o
 	g++-13 $(FLAGS) -o $@ $^
@@ -12,7 +12,7 @@ test_cover_tree: test_cover_tree.cpp CoverTree.o Point.o read_args.o
 	g++-13 $(FLAGS) -o $@ $^
 
 time_cover_tree: time_cover_tree.cpp CoverTree.o Point.o read_args.o
-	g++-13 $(FLAGS) -fopenmp -o $@ $^
+	g++-13 $(FLAGS) -o $@ $^
 
 Point.o: Point.cpp Point.h
 	g++-13 $(FLAGS) -c -o $@ $<
