@@ -9,7 +9,7 @@
 class CoverTree
 {
 public:
-    CoverTree(const std::vector<Point>& points) { build_tree(); }
+    CoverTree(const std::vector<Point>& points) : points(points) { build_tree(); }
 
     size_t num_vertices() const { return pt.size(); }
     size_t num_points() const { return points.size(); }
@@ -24,6 +24,8 @@ public:
     size_t get_child_ids(int64_t vertex_id, std::vector<int64_t>& child_ids) const;
     size_t get_level_ids(int64_t vertex_level, std::vector<int64_t>& level_ids) const;
 
+    const std::vector<Point>& get_points() const { return points; }
+
 private:
     std::vector<Point> points;
     double max_radius;
@@ -35,7 +37,7 @@ private:
     std::vector<std::vector<int64_t>> children;
     std::vector<std::vector<int64_t>> levelset;
 
-    void build_tree(); /* TODO */
+    void build_tree();
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double point_dist(int64_t point_id1, int64_t point_id2) const;
     double vertex_ball_radius(int64_t vertex_id) const;

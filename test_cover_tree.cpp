@@ -28,16 +28,16 @@ int main(int argc, char *argv[])
     seed = find_int_arg(argc, argv, "-s", seed);
 
 
-    //BruteForce bf(Point::random_points(num_points, d, seed));
-    //const std::vector<Point>& points = bf.get_points();
-    //std::vector<int64_t> ids;
+    CoverTree ct(Point::random_points(num_points, d, seed));
+    const std::vector<Point>& points = ct.get_points();
+    std::vector<int64_t> ids;
 
-    //for (size_t i = 0; i < points.size(); ++i)
-    //{
-        //bf.radii_query(points[i], radius, ids);
-        //std::copy(ids.begin(), ids.end(), std::ostream_iterator<int>(std::cout, ", "));
-        //std::cout << std::endl;
-    //}
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        ct.radii_query(points[i], radius, ids);
+        std::copy(ids.begin(), ids.end(), std::ostream_iterator<int>(std::cout, ", "));
+        std::cout << std::endl;
+    }
 
     return 0;
 }
