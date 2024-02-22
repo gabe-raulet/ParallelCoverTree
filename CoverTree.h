@@ -15,7 +15,7 @@ public:
     size_t num_points() const { return points.size(); }
     size_t num_levels() const { return levelset.size(); }
 
-    size_t radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const; /* TODO */
+    size_t radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const;
 
     int64_t get_vertex_level(int64_t vertex_id) const { return level[vertex_id]; }
     int64_t get_point_id(int64_t vertex_id) const { return pt[vertex_id]; }

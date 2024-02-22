@@ -1,5 +1,6 @@
 #include "CoverTree.h"
 #include <cmath>
+#include <unordered_set>
 
 double CoverTree::point_dist(int64_t point_id1, int64_t point_id2) const
 {
@@ -29,7 +30,40 @@ size_t CoverTree::get_level_ids(int64_t vertex_level, std::vector<int64_t>& leve
 
 size_t CoverTree::radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const
 {
-    return 0;
+    radius /= max_radius;
+    std::unordered_set<int64_t> idset;
+    std::vector<int64_t> stack = {0};
+
+    int64_t u, v;
+    std::vector<int64_t> mychildren;
+    size_t m;
+
+    while (stack.size() != 0)
+    {
+        u = stack.back(); stack.pop_back();
+        m = get_child_ids(u, mychildren);
+
+        for (size_t i = 0; i < m; ++i)
+        {
+            v = mychildren[i];
+
+            if (distance(query, points[get_point_id(v)]) <= radius + vertex_ball_radius(v))
+            {
+                stack.push_back(v);
+            }
+
+            if (distance(query, points[get_point_id(v)]) <= radius)
+            {
+                idset.insert(get_point_id(v));
+            }
+        }
+    }
+
+    ids.clear();
+    ids.assign(idset.begin(), idset.end());
+    std::sort(ids.begin(), ids.end());
+
+    return ids.size();
 }
 
 int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
