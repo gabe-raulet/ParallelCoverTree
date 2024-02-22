@@ -1,4 +1,4 @@
-all: test_point test_brute_force test_cover_tree time_cover_tree
+all: test_point test_brute_force test_cover_tree time_cover_tree create_dataset
 
 FLAGS=-std=c++17 -O2 -fopenmp
 
@@ -12,6 +12,9 @@ test_cover_tree: test_cover_tree.cpp CoverTree.o Point.o read_args.o
 	g++-13 $(FLAGS) -o $@ $^
 
 time_cover_tree: time_cover_tree.cpp CoverTree.o Point.o read_args.o
+	g++-13 $(FLAGS) -o $@ $^
+
+create_dataset: create_dataset.cpp CoverTree.o Point.o read_args.o
 	g++-13 $(FLAGS) -o $@ $^
 
 Point.o: Point.cpp Point.h

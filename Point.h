@@ -12,6 +12,9 @@ public:
     Point(const std::vector<double>& p);
     Point(const Point& rhs);
 
+    int getdim() const { return d; }
+    const void* getdata() const { return static_cast<const void*>(data); }
+
     static std::vector<Point> random_points(size_t num_points, int d, int seed = -1);
 
     friend double distance(const Point& pt1, const Point& pt2);
