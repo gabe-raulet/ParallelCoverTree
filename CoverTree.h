@@ -36,7 +36,7 @@ private:
     std::vector<std::vector<int64_t>> levelset;
 
     void build_tree(); /* TODO */
-    int64_t add_vertex(int64_t point_id, int64_t parent_id); /* TODO */
+    int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double point_dist(int64_t point_id1, int64_t point_id2) const;
     double vertex_ball_radius(int64_t vertex_id) const;
 };

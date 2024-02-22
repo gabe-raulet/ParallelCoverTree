@@ -31,3 +31,32 @@ size_t CoverTree::radii_query(const Point& query, double radius, std::vector<int
 {
     return 0;
 }
+
+int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
+{
+    int64_t vertex_level;
+    int64_t vertex_id = num_vertices();
+
+    pt.push_back(point_id);
+    parent.push_back(parent_id);
+    children.resize(children.size()+1);
+
+    if (parent_id >= 0)
+    {
+        vertex_level = get_vertex_level(parent_id) + 1;
+        children[parent_id].push_back(vertex_id);
+    }
+    else
+    {
+        vertex_level = 0;
+    }
+
+    level.push_back(vertex_level);
+
+    if (num_levels() < vertex_level+1)
+        levelset.resize(vertex_level+1);
+
+    levelset[vertex_level].push_back(vertex_id);
+
+    return vertex_id;
+}
