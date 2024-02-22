@@ -2,6 +2,8 @@
 #include <cmath>
 #include <tuple>
 #include <vector>
+#include <algorithm>
+#include <cassert>
 #include <unordered_set>
 
 double CoverTree::point_dist(int64_t point_id1, int64_t point_id2) const
@@ -60,7 +62,6 @@ size_t CoverTree::radii_query(const Point& query, double radius, std::vector<int
         }
     }
 
-    ids.clear();
     ids.assign(idset.begin(), idset.end());
     std::sort(ids.begin(), ids.end());
 

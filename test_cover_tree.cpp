@@ -1,6 +1,7 @@
 #include "Point.h"
 #include "CoverTree.h"
 #include "read_args.h"
+#include <iterator>
 #include <iostream>
 #include <vector>
 

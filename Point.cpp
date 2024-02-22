@@ -1,5 +1,6 @@
 #include "Point.h"
 #include <random>
+#include <cassert>
 
 Point::Point(int d) : d(d), data(new double[d]()) {}
 
