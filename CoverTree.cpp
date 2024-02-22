@@ -101,10 +101,7 @@ void CoverTree::build_tree()
 
     for (int64_t i = 0; i < num_points(); ++i)
     {
-        double d = distance(points[0], points[i]);
-
-        if (d >= max_radius)
-            max_radius = d;
+        max_radius = std::max(max_radius, distance(points[0], points[i]));
     }
 
     std::vector<std::tuple<int64_t, std::vector<int64_t>>> stack;
