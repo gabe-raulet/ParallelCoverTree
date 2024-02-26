@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 {
-    int num_points = 1000;
+    int64_t num_points = 1024*64;
     int seed = -1;
     int d = 16;
     double radius = 0.5;
@@ -24,10 +24,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    num_points = find_int_arg(argc, argv, "-n", num_points);
-    d = find_int_arg(argc, argv, "-d", d);
-    radius = find_double_arg(argc, argv, "-r", radius);
-    seed = find_int_arg(argc, argv, "-s", seed);
+    num_points = read_formatted_int_arg(argc, argv, "-n", &num_points);
+    d = read_int_arg(argc, argv, "-d", &d);
+    radius = read_double_arg(argc, argv, "-r", &radius);
+    seed = read_int_arg(argc, argv, "-s", &seed);
 
 
     std::vector<Point> points = Point::random_points(num_points, d, seed);
