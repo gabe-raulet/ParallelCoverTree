@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     std::vector<std::vector<int64_t>> truth, nng;
 
     Point::read_points(points, points_fname);
-    CoverTree ct(points);
+    CoverTree ct = CoverTree::build(points);
 
     omp_set_num_threads(1);
     t = ct.get_neighborhood_graph(radius, truth);

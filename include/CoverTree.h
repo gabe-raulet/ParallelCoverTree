@@ -9,7 +9,21 @@
 class CoverTree
 {
 public:
-    CoverTree(const std::vector<Point>& points) : points(points) { build_tree_recursive(); }
+    CoverTree(const std::vector<Point>& points) : points(points) {}
+
+    static CoverTree build(const std::vector<Point>& points)
+    {
+        CoverTree ct(points);
+        ct.build_tree();
+        return ct;
+    }
+
+    static CoverTree build_recursive(const std::vector<Point>& points)
+    {
+        CoverTree ct(points);
+        ct.build_tree_recursive();
+        return ct;
+    }
 
     size_t num_vertices() const { return pt.size(); }
     size_t num_points() const { return points.size(); }

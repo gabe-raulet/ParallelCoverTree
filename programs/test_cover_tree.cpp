@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
             double t;
 
             t = -omp_get_wtime();
-            CoverTree ct(points);
+            CoverTree ct = CoverTree::build(points);
             t += omp_get_wtime();
 
             std::cout << "** number of points: " << num_points << "\n";
