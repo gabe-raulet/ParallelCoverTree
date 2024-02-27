@@ -2,15 +2,17 @@
 #include "CoverTree.h"
 #include "read_args.h"
 #include <cassert>
+#include <algorithm>
 #include <iterator>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <stdio.h>
+#include <omp.h>
 
-int write_points(const std::vector<Point>& points, const char *fname);
-int write_queries(CoverTree& ct, double radius, const char *fname);
+double get_neighborhood_graph(CoverTree& ct, double radius, std::vector<std::vector<int64_t>>& nng);
+void write_nng(const std::vector<std::vector<int64_t>>& nng, double radius, const char *output);
 
 int main(int argc, char *argv[])
 {
@@ -44,14 +46,48 @@ int main(int argc, char *argv[])
     seed = read_int_arg(argc, argv, "-s", &seed);
     output = read_string_arg(argc, argv, "-o", (char**)&output);
 
-    fprintf(stderr, "         -n INT    number of points [%lld]\n", n);
-    fprintf(stderr, "         -d INT    point dimension [%d]\n", d);
-    fprintf(stderr, "         -r FLOAT  start radius [%.4f]\n", r0);
-    fprintf(stderr, "         -i FLOAT  radius increment [%.4f]\n", inc);
-    fprintf(stderr, "         -f INT    filter size [%d]\n", filtsize);
-    fprintf(stderr, "         -s INT    seed [%d]\n", seed);
-    fprintf(stderr, "         -o STR    output prefix ['%s']\n", output);
-    fprintf(stderr, "         -h        help message\n");
+    std::vector<Point> points = Point::random_points(n, d, seed);
+    CoverTree ct(points);
+    double radius = r0;
+    double telapsed;
+
+    for (int step = 0; step < filtsize; step++, radius += inc)
+    {
+        std::vector<std::vector<int64_t>> nng;
+        telapsed = get_neighborhood_graph(ct, radius, nng);
+        write_nng(nng, radius, output);
+    }
 
     return 0;
+}
+
+double get_neighborhood_graph(CoverTree& ct, double radius, std::vector<std::vector<int64_t>>& nng)
+{
+    double t;
+    nng.resize(ct.num_points());
+    const auto& points = ct.get_points();
+
+    t = -omp_get_wtime();
+    for (int64_t u = 0; u < ct.num_points(); ++u)
+    {
+        ct.radii_query(points[u], radius, nng[u]);
+        std::sort(nng[u].begin(), nng[u].end());
+    }
+    t += omp_get_wtime();
+
+    return t;
+}
+
+void write_nng(const std::vector<std::vector<int64_t>>& nng, double radius, const char *output)
+{
+    std::string fname = std::string(output) + ".r" + std::to_string(radius);    
+    std::ofstream f(fname);
+
+    for (size_t i = 0; i < nng.size(); ++i)
+    {
+        std::copy(nng[i].begin(), nng[i].end(), std::ostream_iterator<int64_t>(f, " "));
+        f << "\n";
+    }
+
+    f.close();
 }
