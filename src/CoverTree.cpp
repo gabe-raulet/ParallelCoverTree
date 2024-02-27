@@ -246,12 +246,13 @@ bool CoverTree::is_covering() const
     return true;
 }
 
-double CoverTree::vertices_per_level() const
+double CoverTree::average_vertex_degree(int64_t level) const
 {
+    const auto& vs = levelset[level];
     size_t sum = 0;
 
-    for (int64_t i = 0; i < num_levels(); ++i)
-        sum += levelset[i].size();
+    for (auto vit = vs.begin(); vit != vs.end(); ++vit)
+        sum += children[*vit].size();
 
-    return (sum + 0.0) / (levelset.size() + 0.0);
+    return (sum + 0.0) / (vs.size() + 0.0);
 }

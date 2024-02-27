@@ -15,11 +15,11 @@ FLAGS=-fopenmp -O2 -std=c++17
 endif
 
 INCLUDES=-I./include
-PROGS=time_cover_tree
+PROGS=test_cover_tree
 
 all: $(PROGS)
 
-time_cover_tree: programs/time_cover_tree.cpp CoverTree.o Point.o read_args.o
+test_cover_tree: programs/test_cover_tree.cpp CoverTree.o Point.o read_args.o
 	$(COMPILER) $(FLAGS) $(INCLUDES) -o $@ $^
 
 Point.o: src/Point.cpp include/Point.h
