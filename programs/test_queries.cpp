@@ -29,12 +29,14 @@ int main(int argc, char *argv[])
 
     Point::read_points(points, points_fname);
     CoverTree ct(points);
+
+    omp_set_num_threads(1);
     t = ct.get_neighborhood_graph(radius, truth);
 
     for (int nthrds = 2; nthrds <= 64; nthrds *= 2)
     {
         omp_set_num_threads(nthrds);
-        t2 = ct.get_neighborhood_graph_parallel(radius, nng);
+        t2 = ct.get_neighborhood_graph(radius, nng);
 
         auto cmp1 = truth.begin();
         auto cmp2 = nng.begin();

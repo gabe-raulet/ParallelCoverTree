@@ -273,24 +273,6 @@ double CoverTree::average_vertex_degree(int64_t level) const
 
 double CoverTree::get_neighborhood_graph(double radius, std::vector<std::vector<int64_t>>& nng, bool sort) const
 {
-    double t_tot = 0, t;
-    nng.resize(num_points());
-
-    for (int64_t u = 0; u < num_points(); ++u)
-    {
-        t = -omp_get_wtime();
-        radii_query(points[u], radius, nng[u]);
-        t += omp_get_wtime();
-        t_tot += t;
-
-        if (sort) std::sort(nng[u].begin(), nng[u].end());
-    }
-
-    return t_tot;
-}
-
-double CoverTree::get_neighborhood_graph_parallel(double radius, std::vector<std::vector<int64_t>>& nng, bool sort) const
-{
     int64_t n = num_points();
     nng.resize(num_points());
 
