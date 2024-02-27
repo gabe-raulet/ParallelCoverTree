@@ -95,7 +95,7 @@ int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
     return vertex_id;
 }
 
-void CoverTree::build_tree()
+void CoverTree::set_max_radius()
 {
     max_radius = -1;
 
@@ -103,12 +103,24 @@ void CoverTree::build_tree()
     {
         max_radius = std::max(max_radius, distance(points[0], points[i]));
     }
+}
 
+std::vector<std::tuple<int64_t, std::vector<int64_t>>> CoverTree::init_build_stack()
+{
     std::vector<std::tuple<int64_t, std::vector<int64_t>>> stack;
     stack.emplace_back(add_vertex(0, -1), std::vector<int64_t>(num_points()));
 
     for (int64_t i = 0; i < num_points(); ++i)
         std::get<1>(stack.back())[i] = i;
+
+    return std::move(stack);
+}
+
+
+void CoverTree::build_tree()
+{
+    set_max_radius();
+    auto stack = init_build_stack();
 
     std::vector<double> dists(num_points());
     std::vector<int64_t> closest(num_points());

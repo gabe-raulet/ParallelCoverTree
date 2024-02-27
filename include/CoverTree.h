@@ -47,6 +47,9 @@ private:
     bool is_full() const;
     bool is_nested() const;
     bool is_covering() const;
+
+    void set_max_radius();
+    std::vector<std::tuple<int64_t, std::vector<int64_t>>> init_build_stack();
 };
 
 #endif
