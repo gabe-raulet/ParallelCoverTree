@@ -14,6 +14,7 @@
 double get_neighborhood_graph(CoverTree& ct, double radius, std::vector<std::vector<int64_t>>& nng);
 void write_nng(const std::vector<std::vector<int64_t>>& nng, double radius, const char *output);
 void write_points(const std::vector<Point>& points, const char *output);
+void read_points(std::vector<Point>& points, const char *fname);
 
 int main(int argc, char *argv[])
 {
@@ -87,6 +88,7 @@ void write_nng(const std::vector<std::vector<int64_t>>& nng, double radius, cons
 
     for (size_t i = 0; i < nng.size(); ++i)
     {
+        f << nng[i].size() << " ";
         std::copy(nng[i].begin(), nng[i].end(), std::ostream_iterator<int64_t>(f, " "));
         f << "\n";
     }
@@ -110,6 +112,27 @@ void write_points(const std::vector<Point>& points, const char *output)
     for (uint64_t i = 0; i < n; ++i)
     {
         fwrite(points[i].getdata(), sizeof(double), d, f);
+    }
+
+    fclose(f);
+}
+
+void read_points(std::vector<Point>& points, const char *fname)
+{
+    points.clear();
+
+    FILE *f = fopen(fname, "rb");
+    uint64_t n, d;
+
+    fread(&n, sizeof(uint64_t), 1, f);
+    fread(&d, sizeof(uint64_t), 1, f);
+
+    std::vector<double> p(d);
+
+    for (uint64_t i = 0; i < n; ++i)
+    {
+        fread(p.data(), sizeof(double), d, f);
+        points.emplace_back(p);
     }
 
     fclose(f);
