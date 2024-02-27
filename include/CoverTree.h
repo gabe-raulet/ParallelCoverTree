@@ -9,7 +9,7 @@
 class CoverTree
 {
 public:
-    CoverTree(const std::vector<Point>& points) : points(points) { build_tree2(); }
+    CoverTree(const std::vector<Point>& points) : points(points) { build_tree_recursive(); }
 
     size_t num_vertices() const { return pt.size(); }
     size_t num_points() const { return points.size(); }
@@ -41,14 +41,14 @@ private:
     std::vector<std::vector<int64_t>> levelset;
 
     void build_tree();
-    void build_tree2();
-    void build_tree_recursive(int64_t parent_id, std::vector<int64_t> descendants, double *dists, int64_t *closest);
+    void build_tree_recursive();
+    void build_tree_recursive_f(int64_t parent_id, std::vector<int64_t> descendants);
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double point_dist(int64_t point_id1, int64_t point_id2) const;
     double vertex_ball_radius(int64_t vertex_id) const;
 
     std::vector<std::tuple<int64_t, std::vector<int64_t>>>
-    get_next_parents(int64_t parent_id, const int64_t *descendants, double *dists, int64_t *closest, size_t n_descendants);
+    get_next_parents(int64_t parent_id, const std::vector<int64_t>& descendants);
 
     bool is_full() const;
     bool is_nested() const;
