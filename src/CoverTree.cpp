@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cassert>
 #include <unordered_set>
+#include <algorithm>
+#include <omp.h>
 
 double CoverTree::point_dist(int64_t point_id1, int64_t point_id2) const
 {
@@ -267,4 +269,27 @@ double CoverTree::average_vertex_degree(int64_t level) const
         sum += children[*vit].size();
 
     return (sum + 0.0) / (vs.size() + 0.0);
+}
+
+double CoverTree::get_neighborhood_graph(double radius, std::vector<std::vector<int64_t>>& nng, bool sort) const
+{
+    double t_tot = 0, t;
+    nng.resize(num_points());
+
+    for (int64_t u = 0; u < num_points(); ++u)
+    {
+        t = -omp_get_wtime();
+        radii_query(points[u], radius, nng[u]);
+        t += omp_get_wtime();
+        t_tot += t;
+
+        if (sort) std::sort(nng[u].begin(), nng[u].end());
+    }
+
+    return t_tot;
+}
+
+double CoverTree::get_neighborhood_graph_parallel(double radius, std::vector<std::vector<int64_t>>& nng, bool sort) const
+{
+    return get_neighborhood_graph(radius, nng, sort);
 }

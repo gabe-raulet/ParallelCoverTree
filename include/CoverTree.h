@@ -16,6 +16,8 @@ public:
     size_t num_levels() const { return levelset.size(); }
 
     size_t radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const;
+    double get_neighborhood_graph(double radius, std::vector<std::vector<int64_t>>& nng, bool sort = true) const;
+    double get_neighborhood_graph_parallel(double radius, std::vector<std::vector<int64_t>>& nng, bool sort = true) const;
 
     int64_t get_vertex_level(int64_t vertex_id) const { return level[vertex_id]; }
     int64_t get_point_id(int64_t vertex_id) const { return pt[vertex_id]; }

@@ -1,6 +1,8 @@
 #include "Point.h"
 #include <random>
-#include <cassert>
+#include <string>
+#include <assert.h>
+#include <stdio.h>
 
 Point::Point(int d) : d(d), data(new double[d]()) {}
 
@@ -39,6 +41,47 @@ std::vector<Point> Point::random_points(size_t num_points, int d, int seed)
     delete[] mem;
 
     return points;
+}
+
+void Point::write_points(const std::vector<Point>& points, const char *fname)
+{
+    assert(points.size() != 0);
+
+    uint64_t n = points.size();
+    uint64_t d = points.back().getdim();
+
+    FILE *f = fopen(fname, "wb");
+
+    fwrite(&n, sizeof(uint64_t), 1, f);
+    fwrite(&d, sizeof(uint64_t), 1, f);
+
+    for (uint64_t i = 0; i < n; ++i)
+    {
+        fwrite(points[i].getdata(), sizeof(double), d, f);
+    }
+
+    fclose(f);
+}
+
+void Point::read_points(std::vector<Point>& points, const char *fname)
+{
+    points.clear();
+
+    FILE *f = fopen(fname, "rb");
+    uint64_t n, d;
+
+    fread(&n, sizeof(uint64_t), 1, f);
+    fread(&d, sizeof(uint64_t), 1, f);
+
+    std::vector<double> p(d);
+
+    for (uint64_t i = 0; i < n; ++i)
+    {
+        fread(p.data(), sizeof(double), d, f);
+        points.emplace_back(p);
+    }
+
+    fclose(f);
 }
 
 double distance(const Point& pt1, const Point& pt2)
