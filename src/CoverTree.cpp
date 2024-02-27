@@ -118,6 +118,96 @@ std::vector<std::tuple<int64_t, std::vector<int64_t>>> CoverTree::init_build_sta
     return std::move(stack);
 }
 
+void CoverTree::build_tree2()
+{
+    set_max_radius();
+    auto dummy_stack = init_build_stack();
+    int64_t parent_id = std::get<0>(dummy_stack.back());
+    auto descendants = std::get<1>(dummy_stack.back());
+
+    std::vector<double> dists(num_points());
+    std::vector<int64_t> closest(num_points());
+
+    //#pragma omp parallel
+    //{
+        build_tree_recursive(parent_id, descendants, dists.data(), closest.data());
+    //}
+
+    assert(is_full());
+    assert(is_nested());
+    assert(is_covering());
+}
+
+std::vector<std::tuple<int64_t, std::vector<int64_t>>>
+CoverTree::get_next_parents(int64_t parent_id, const int64_t *descendants, double *dists, int64_t *closest, size_t n_descendants)
+{
+    for (size_t i = 0; i < n_descendants; ++i)
+    {
+        dists[i] = point_dist(descendants[0], descendants[i]);
+        closest[i] = descendants[0];
+    }
+
+    std::vector<int64_t> child_descendants = {get_point_id(parent_id)};
+    double parent_ball_radius = vertex_ball_radius(parent_id);
+
+    for (size_t k = 0; k < n_descendants; ++k)
+    {
+        size_t farthest = std::distance(dists, std::max_element(dists, dists + n_descendants));
+
+        if (dists[farthest] <= 0.5 * parent_ball_radius)
+            break;
+
+        int64_t next_child_id = descendants[farthest];
+        child_descendants.push_back(next_child_id);
+
+        for (size_t j = 0; j < n_descendants; ++j)
+        {
+            double lastdist = dists[j];
+            double curdist = point_dist(descendants[j], next_child_id);
+
+            if (curdist <= lastdist)
+            {
+                dists[j] = curdist;
+                closest[j] = next_child_id;
+            }
+        }
+    }
+
+    std::vector<std::tuple<int64_t, std::vector<int64_t>>> next_parents;
+
+    for (auto itr = child_descendants.begin(); itr != child_descendants.end(); ++itr)
+    {
+        int64_t child_pt = *itr;
+        std::vector<int64_t> next_descendants = {child_pt};
+
+        for (size_t j = 0; j < n_descendants; ++j)
+            if (closest[j] == child_pt && descendants[j] != child_pt)
+                next_descendants.push_back(descendants[j]);
+
+        next_parents.emplace_back(add_vertex(child_pt, parent_id), next_descendants);
+    }
+
+    return next_parents;
+}
+
+void CoverTree::build_tree_recursive(int64_t parent_id, std::vector<int64_t> descendants, double *dists, int64_t *closest)
+{
+    size_t n_descendants = descendants.size();
+    assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
+
+    if (n_descendants == 1)
+        return;
+
+    auto next_parents = get_next_parents(parent_id, descendants.data(), dists, closest, n_descendants);
+
+    for (auto itr = next_parents.begin(); itr != next_parents.end(); ++itr)
+    {
+        auto next_parent_id = std::get<0>(*itr);
+        auto next_descendants = std::get<1>(*itr);
+
+        build_tree_recursive(next_parent_id, next_descendants, dists, closest);
+    }
+}
 
 void CoverTree::build_tree()
 {
