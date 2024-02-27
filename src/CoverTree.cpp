@@ -296,7 +296,7 @@ double CoverTree::get_neighborhood_graph_parallel(double radius, std::vector<std
 
     double t = -omp_get_wtime();
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic, 100)
     for (int64_t u = 0; u < n; ++u)
     {
         radii_query(points[u], radius, nng[u]);
