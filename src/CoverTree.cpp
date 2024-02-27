@@ -291,5 +291,22 @@ double CoverTree::get_neighborhood_graph(double radius, std::vector<std::vector<
 
 double CoverTree::get_neighborhood_graph_parallel(double radius, std::vector<std::vector<int64_t>>& nng, bool sort) const
 {
-    return get_neighborhood_graph(radius, nng, sort);
+    int64_t n = num_points();
+    nng.resize(num_points());
+
+    double t = -omp_get_wtime();
+
+    #pragma omp parallel for
+    for (int64_t u = 0; u < n; ++u)
+    {
+        radii_query(points[u], radius, nng[u]);
+    }
+
+    t += omp_get_wtime();
+
+    if (sort)
+        for (auto it = nng.begin(); it != nng.end(); ++it)
+            std::sort(it->begin(), it->end());
+
+    return t;
 }
