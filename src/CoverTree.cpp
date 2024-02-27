@@ -193,7 +193,7 @@ CoverTree::get_next_parents(int64_t parent_id, const std::vector<int64_t>& desce
     return next_parents;
 }
 
-void CoverTree::build_tree_recursive_f(int64_t parent_id, std::vector<int64_t> descendants)
+void CoverTree::build_tree_recursive_f(int64_t parent_id, const std::vector<int64_t>& descendants)
 {
     size_t n_descendants = descendants.size();
     assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
@@ -211,7 +211,7 @@ void CoverTree::build_tree_recursive_f(int64_t parent_id, std::vector<int64_t> d
             for (size_t i = 0; i < m; ++i)
             {
                 auto next_parent_id = std::get<0>(next_parents[i]);
-                auto next_descendants = std::get<1>(next_parents[i]);
+                const auto& next_descendants = std::get<1>(next_parents[i]);
 
                 #pragma omp task
                 build_tree_recursive_f(next_parent_id, next_descendants);
