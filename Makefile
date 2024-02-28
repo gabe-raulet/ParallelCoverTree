@@ -47,7 +47,7 @@ read_args.o: src/read_args.c include/read_args.h
 	$(COMPILER) $(FLAGS) $(INCLUDES) -c -o $@ $<
 
 clean:
-	rm -rf a.out *.dSYM *.o
+	rm -rf a.out *.dSYM *.o *.bin
 
 distclean: clean
 	rm -f $(PROGS)
