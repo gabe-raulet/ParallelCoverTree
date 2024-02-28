@@ -6,4 +6,5 @@ test_cover_tree
 test_queries
 test_all
 test_construction
+test_point_funcs
 create_data
