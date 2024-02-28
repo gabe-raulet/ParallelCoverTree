@@ -110,3 +110,61 @@ std::ostream& operator<<(std::ostream& stream, const Point& p)
     stream << p.data[p.d-1] << ")";
     return stream;
 }
+
+PointStore::PointStore(size_t n, int d, double *mem) : dim(d), mem(mem)
+{
+    points.reserve(n);
+    double *p = mem;
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        points.emplace_back(p, dim, false);
+        p += dim;
+    }
+}
+
+void PointStore::write_points(const char *fname)
+{
+    FILE *f = fopen(fname, "wb");
+
+    uint64_t n = getsize();
+    uint64_t d = getdim();
+
+    fwrite(&n, sizeof(uint64_t), 1, f);
+    fwrite(&d, sizeof(uint64_t), 1, f);
+    fwrite(mem, sizeof(double), n*d, f);
+
+    fclose(f);
+}
+
+PointStore PointStore::read_points(const char *fname)
+{
+    FILE *f = fopen(fname, "rb");
+    assert(f != NULL);
+
+    uint64_t n, d;
+
+    fread(&n, sizeof(uint64_t), 1, f);
+    fread(&d, sizeof(uint64_t), 1, f);
+
+    double *mem = new double[n*d];
+
+    fread(mem, sizeof(double), n*d, f);
+    fclose(f);
+
+    return PointStore(n, d, mem);
+}
+
+PointStore PointStore::generate_random_points(size_t n, int d, int seed, double min, double max)
+{
+    std::random_device rd;
+    std::default_random_engine gen(seed < 0? rd() : seed);
+    std::uniform_real_distribution<> dis(min, max);
+
+    double *mem = new double[n*d];
+
+    for (size_t i = 0; i < d*n; ++i)
+        mem[i] = dis(gen);
+
+    return PointStore(n, d, mem);
+}

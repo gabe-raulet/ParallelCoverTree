@@ -9,7 +9,7 @@ COMPILER=g++-13
 endif
 
 ifeq ($(D),1)
-FLAGS=-fopenmp -O0 -g -DDEBUG -std=c++17
+FLAGS=-fopenmp -O0 -g -DDEBUG -std=c++17 -pedantic
 else
 FLAGS=-fopenmp -O2 -std=c++17
 endif
