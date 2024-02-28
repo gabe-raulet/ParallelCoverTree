@@ -8,7 +8,7 @@ class Point
 {
 public:
     Point(int d);
-    Point(const double *p, int d);
+    Point(const double *p, int d, bool isowner = true);
     Point(const Point& rhs);
 
     int getdim() const { return d; }
@@ -21,9 +21,12 @@ public:
     friend double distance(const Point& pt1, const Point& pt2);
     friend std::ostream& operator<<(std::ostream& stream, const Point& p);
 
+    ~Point() { if (isowner) delete[] data; }
+
 private:
-    double *data;
     int d;
+    bool isowner;
+    double *data;
 };
 
 #endif

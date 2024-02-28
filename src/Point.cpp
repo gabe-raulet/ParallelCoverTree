@@ -4,11 +4,19 @@
 #include <assert.h>
 #include <stdio.h>
 
-Point::Point(int d) : d(d), data(new double[d]()) {}
+Point::Point(int d) : isowner(true), d(d), data(new double[d]()) {}
 
-Point::Point(const double *p, int d) : d(d), data(new double[d])
+Point::Point(const double *p, int d, bool isowner) : d(d), isowner(isowner)
 {
-    std::copy(p, p + d, data);
+    if (isowner)
+    {
+        data = new double[d];
+        std::copy(p, p + d, data);
+    }
+    else
+    {
+        data = const_cast<double*>(p);
+    }
 }
 
 Point::Point(const Point& rhs) : Point(rhs.data, rhs.d) {}
