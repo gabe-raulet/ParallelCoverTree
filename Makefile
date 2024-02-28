@@ -48,5 +48,5 @@ read_args.o: src/read_args.c include/read_args.h
 clean:
 	rm -rf a.out *.dSYM *.o *.bin
 
-distclean: clean
+dclean: clean
 	rm -f $(PROGS)
