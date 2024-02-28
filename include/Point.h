@@ -45,6 +45,7 @@ public:
     void write_points(const char *fname);
     static PointStore read_points(const char *fname);
     static PointStore generate_random_points(size_t n, int d, int seed, double min, double max);
+    static PointStore pgenerate_random_points(size_t n, int d, int seed, double min, double max, int nthreads);
 
 private:
     int dim;
