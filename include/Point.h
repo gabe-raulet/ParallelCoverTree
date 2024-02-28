@@ -38,6 +38,7 @@ public:
 
     int getdim() const { return dim; }
     size_t getsize() const { return points.size(); }
+    const std::vector<Point>& getvector() const { return points; }
 
     const Point& operator[](size_t idx) const { return points[idx]; }
 
