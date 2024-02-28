@@ -18,13 +18,6 @@ public:
         return ct;
     }
 
-    static CoverTree build_recursive(const PointStore& points)
-    {
-        CoverTree ct(points);
-        ct.build_tree_recursive();
-        return ct;
-    }
-
     size_t num_vertices() const { return pt.size(); }
     size_t num_points() const { return points.getsize(); }
     size_t num_levels() const { return levelset.size(); }
@@ -56,8 +49,6 @@ private:
     std::vector<std::vector<int64_t>> levelset;
 
     void build_tree();
-    void build_tree_recursive();
-    void build_tree_recursive_f(int64_t parent_id, const std::vector<int64_t>& descendants);
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double point_dist(int64_t point_id1, int64_t point_id2) const;
     double vertex_ball_radius(int64_t vertex_id) const;

@@ -33,7 +33,7 @@ private:
 class PointStore
 {
 public:
-    PointStore(size_t n, int d, std::shared_ptr<double> mem);
+    PointStore(size_t n, int d, std::shared_ptr<double[]> mem);
     PointStore(const PointStore& rhs);
 
     int getdim() const { return dim; }
@@ -48,7 +48,7 @@ public:
 
 private:
     int dim;
-    std::shared_ptr<double> mem;
+    std::shared_ptr<double[]> mem;
     std::vector<Point> points;
 };
 

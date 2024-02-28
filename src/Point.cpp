@@ -111,7 +111,7 @@ std::ostream& operator<<(std::ostream& stream, const Point& p)
     return stream;
 }
 
-PointStore::PointStore(size_t n, int d, std::shared_ptr<double> mem) : dim(d), mem(mem)
+PointStore::PointStore(size_t n, int d, std::shared_ptr<double[]> mem) : dim(d), mem(mem)
 {
     points.reserve(n);
     double *p = mem.get();
@@ -149,7 +149,8 @@ PointStore PointStore::read_points(const char *fname)
     fread(&n, sizeof(uint64_t), 1, f);
     fread(&d, sizeof(uint64_t), 1, f);
 
-    std::shared_ptr<double> mem = std::make_shared<double>(n*d);
+    std::shared_ptr<double[]> mem;
+    mem.reset(new double[n*d]);
 
     fread(mem.get(), sizeof(double), n*d, f);
     fclose(f);
@@ -163,7 +164,8 @@ PointStore PointStore::generate_random_points(size_t n, int d, int seed, double 
     std::default_random_engine gen(seed < 0? rd() : seed);
     std::uniform_real_distribution<> dis(min, max);
 
-    std::shared_ptr<double> mem = std::make_shared<double>(n*d);
+    std::shared_ptr<double[]> mem;
+    mem.reset(new double[n*d]);
     double *p = mem.get();
 
     for (size_t i = 0; i < d*n; ++i)

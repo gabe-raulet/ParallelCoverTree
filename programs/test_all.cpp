@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     omp_set_num_threads(1);
 
     t_serial_build = -omp_get_wtime();
-    CoverTree ct = CoverTree::build_recursive(points);
+    CoverTree ct = CoverTree::build(points);
     t_serial_build += omp_get_wtime();
 
     printf("Successfully built cover tree serially in %.4f seconds\n", t_serial_build);
@@ -53,18 +53,12 @@ int main(int argc, char *argv[])
     for (int nthrds = 2; nthrds <= max_nthrds; nthrds *= 2)
     {
         omp_set_num_threads(nthrds);
-
-        telapsed = -omp_get_wtime();
-        CoverTree tree = CoverTree::build_recursive(points);
-        telapsed += omp_get_wtime();
-
-        printf("Successfully built cover tree with %d threads in %.4f seconds (%.2f speedup)\n", nthrds, telapsed, t_serial_build/telapsed);
-
         telapsed = ct.get_neighborhood_graph(radius, nng);
         assert(nngs_are_equal(truth, nng));
 
-        printf("Successfully built neighborhood graph with %d threads in %.4f seconds (%.2f speedup)\n\n", nthrds, telapsed, t_serial_nng/telapsed);
+        printf("Successfully built neighborhood graph with %d threads in %.4f seconds (%.2f speedup)\n", nthrds, telapsed, t_serial_nng/telapsed);
     }
+    std::cout << std::endl;
 
     return 0;
 }

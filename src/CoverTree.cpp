@@ -120,20 +120,6 @@ std::vector<std::tuple<int64_t, std::vector<int64_t>>> CoverTree::init_build_sta
     return std::move(stack);
 }
 
-void CoverTree::build_tree_recursive()
-{
-    set_max_radius();
-    auto dummy_stack = init_build_stack();
-    int64_t parent_id = std::get<0>(dummy_stack.back());
-    auto descendants = std::get<1>(dummy_stack.back());
-
-    build_tree_recursive_f(parent_id, descendants);
-
-    assert(is_full());
-    assert(is_nested());
-    assert(is_covering());
-}
-
 std::vector<std::tuple<int64_t, std::vector<int64_t>>>
 CoverTree::get_next_parents(int64_t parent_id, const std::vector<int64_t>& descendants)
 {
@@ -186,40 +172,11 @@ CoverTree::get_next_parents(int64_t parent_id, const std::vector<int64_t>& desce
 
         int64_t next_point_id;
 
-        #pragma omp critical
         next_point_id = add_vertex(child_pt, parent_id);
-
         next_parents.emplace_back(next_point_id, next_descendants);
     }
 
     return next_parents;
-}
-
-void CoverTree::build_tree_recursive_f(int64_t parent_id, const std::vector<int64_t>& descendants)
-{
-    size_t n_descendants = descendants.size();
-    assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
-
-    if (n_descendants == 1)
-        return;
-
-    auto next_parents = get_next_parents(parent_id, descendants);
-    size_t m = next_parents.size();
-
-    #pragma omp parallel
-    {
-        #pragma omp single nowait
-        {
-            for (size_t i = 0; i < m; ++i)
-            {
-                auto next_parent_id = std::get<0>(next_parents[i]);
-                const auto& next_descendants = std::get<1>(next_parents[i]);
-
-                #pragma omp task
-                build_tree_recursive_f(next_parent_id, next_descendants);
-            }
-        }
-    }
 }
 
 void CoverTree::build_tree()
