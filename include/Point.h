@@ -34,6 +34,7 @@ class PointStore
 {
 public:
     PointStore(size_t n, int d, std::shared_ptr<double> mem);
+    PointStore(const PointStore& rhs);
 
     int getdim() const { return dim; }
     size_t getsize() const { return points.size(); }

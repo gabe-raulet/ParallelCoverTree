@@ -123,6 +123,8 @@ PointStore::PointStore(size_t n, int d, std::shared_ptr<double> mem) : dim(d), m
     }
 }
 
+PointStore::PointStore(const PointStore& rhs) : dim(rhs.dim), mem(rhs.mem), points(rhs.points) {}
+
 void PointStore::write_points(const char *fname)
 {
     FILE *f = fopen(fname, "wb");
