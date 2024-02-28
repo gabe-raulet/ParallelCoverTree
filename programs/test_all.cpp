@@ -44,6 +44,8 @@ int main(int argc, char *argv[])
 
     printf("Successfully built cover tree serially in %.4f seconds\n", t_serial_build);
 
+    ct.print_info();
+
     t_serial_nng = ct.get_neighborhood_graph(radius, truth);
 
     printf("Built neighborhood graph serially in %.4f seconds\n\n", t_serial_nng);
