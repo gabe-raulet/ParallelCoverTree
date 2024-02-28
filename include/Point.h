@@ -9,7 +9,6 @@ class Point
 public:
     Point(int d);
     Point(const double *p, int d);
-    Point(const std::vector<double>& p);
     Point(const Point& rhs);
 
     int getdim() const { return d; }

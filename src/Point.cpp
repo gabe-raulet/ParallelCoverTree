@@ -11,11 +11,6 @@ Point::Point(const double *p, int d) : d(d), data(new double[d])
     std::copy(p, p + d, data);
 }
 
-Point::Point(const std::vector<double>& p) : d(p.size()), data(new double[p.size()])
-{
-    std::copy(p.begin(), p.end(), data);
-}
-
 Point::Point(const Point& rhs) : Point(rhs.data, rhs.d) {}
 
 std::vector<Point> Point::random_points(size_t num_points, int d, int seed)
@@ -78,7 +73,7 @@ void Point::read_points(std::vector<Point>& points, const char *fname)
     for (uint64_t i = 0; i < n; ++i)
     {
         fread(p.data(), sizeof(double), d, f);
-        points.emplace_back(p);
+        points.emplace_back(p.data(), d);
     }
 
     fclose(f);
