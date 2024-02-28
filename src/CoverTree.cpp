@@ -242,49 +242,10 @@ void CoverTree::build_tree()
         if (n_descendants == 1)
             continue;
 
-        for (size_t i = 0; i < n_descendants; ++i)
-        {
-            dists[i] = point_dist(descendants[0], descendants[i]);
-            closest[i] = descendants[0];
-        }
+        auto next_parents = get_next_parents(parent_id, descendants);
 
-        std::vector<int64_t> child_descendants = {get_point_id(parent_id)};
-        double parent_ball_radius = vertex_ball_radius(parent_id);
-
-        for (size_t k = 0; k < n_descendants; ++k)
-        {
-            size_t farthest = std::distance(dists.begin(), std::max_element(dists.begin(), dists.begin() + n_descendants));
-
-            if (dists[farthest] <= 0.5 * parent_ball_radius)
-                break;
-
-            int64_t next_child_id = descendants[farthest];
-            child_descendants.push_back(next_child_id);
-
-            for (size_t j = 0; j < n_descendants; ++j)
-            {
-                double lastdist = dists[j];
-                double curdist = point_dist(descendants[j], next_child_id);
-
-                if (curdist <= lastdist)
-                {
-                    dists[j] = curdist;
-                    closest[j] = next_child_id;
-                }
-            }
-        }
-
-        for (auto itr = child_descendants.begin(); itr != child_descendants.end(); ++itr)
-        {
-            int64_t child_pt = *itr;
-            std::vector<int64_t> next_descendants = {child_pt};
-
-            for (size_t j = 0; j < n_descendants; ++j)
-                if (closest[j] == child_pt && descendants[j] != child_pt)
-                    next_descendants.push_back(descendants[j]);
-
-            stack.emplace_back(add_vertex(child_pt, parent_id), next_descendants);
-        }
+        for (auto it = next_parents.begin(); it != next_parents.end(); ++it)
+            stack.push_back(*it);
     }
 
     assert(is_full());
