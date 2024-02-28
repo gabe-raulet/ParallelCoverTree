@@ -42,6 +42,7 @@ public:
     const std::vector<Point>& get_points() const { return points; }
 
     double average_vertex_degree(int64_t level) const;
+    void print_info() const;
 
 private:
     std::vector<Point> points;

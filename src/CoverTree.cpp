@@ -6,6 +6,8 @@
 #include <cassert>
 #include <unordered_set>
 #include <algorithm>
+#include <iostream>
+#include <stdio.h>
 #include <omp.h>
 
 double CoverTree::point_dist(int64_t point_id1, int64_t point_id2) const
@@ -392,4 +394,20 @@ double CoverTree::get_neighborhood_graph(double radius, std::vector<std::vector<
             std::sort(it->begin(), it->end());
 
     return t;
+}
+
+void CoverTree::print_info() const
+{
+    std::cout << "* number of points: " << num_points() << "\n";
+    std::cout << "* dimension: " << points.back().getdim() << "\n";
+    std::cout << "* number of vertices: " << num_vertices() << "\n";
+    std::cout << "* number of levels: " << num_levels() << "\n\n";
+
+    for (int64_t i = 0; i < num_levels(); ++i)
+    {
+        printf("level %ld has %lld vertices of average degree %.3f\n", i, levelset[i].size(), average_vertex_degree(i));
+        //std::cout << "level " << i << " has " << levelset[i].size() << " vertices of average degree " << average_vertex_degree(i) << "\n";
+    }
+
+    std::cout << std::endl;
 }

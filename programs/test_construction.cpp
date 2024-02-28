@@ -32,21 +32,23 @@ int main(int argc, char *argv[])
     omp_set_num_threads(1);
 
     t_serial_build = -omp_get_wtime();
-    CoverTree ct = CoverTree::build_recursive(points);
+    CoverTree ct = CoverTree::build(points);
     t_serial_build += omp_get_wtime();
 
-    printf("Successfully built cover tree serially in %.4f seconds\n", t_serial_build);
+    printf("Successfully built cover tree serially in %.4f seconds\n\n", t_serial_build);
 
-    for (int nthrds = 2; nthrds <= max_nthrds; nthrds *= 2)
-    {
-        omp_set_num_threads(nthrds);
+    ct.print_info();
 
-        telapsed = -omp_get_wtime();
-        CoverTree tree = CoverTree::build_recursive(points);
-        telapsed += omp_get_wtime();
+    //for (int nthrds = 2; nthrds <= max_nthrds; nthrds *= 2)
+    //{
+    //    omp_set_num_threads(nthrds);
 
-        printf("Successfully built cover tree with %d threads in %.4f seconds (%.2f speedup)\n", nthrds, telapsed, t_serial_build/telapsed);
-    }
+    //    telapsed = -omp_get_wtime();
+    //    CoverTree tree = CoverTree::build_recursive(points);
+    //    telapsed += omp_get_wtime();
+
+    //    printf("Successfully built cover tree with %d threads in %.4f seconds (%.2f speedup)\n", nthrds, telapsed, t_serial_build/telapsed);
+    //}
 
     return 0;
 }
