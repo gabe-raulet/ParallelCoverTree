@@ -34,8 +34,19 @@ int main(int argc, char *argv[])
     d = read_int_arg(argc, argv, "-d", &d);
     seed = read_int_arg(argc, argv, "-s", &seed);
 
+    double t;
+
+    t = -omp_get_wtime();
     std::vector<Point> points = Point::random_points(n, d, seed);
+    t += omp_get_wtime();
+
+    fprintf(stderr, "Generated %lld random %dd points in %.4f seconds (%.2f points per millisecond)\n", n, d, t, ((n+0.0)/(t*1000)));
+
+    t = -omp_get_wtime();
     Point::write_points(points, output);
+    t += omp_get_wtime();
+
+    fprintf(stderr, "Wrote %lld %dd points to file '%s' in %.4f seconds (%.2f points per millisecond)\n", n, d, output, t, ((n+0.0)/(t*1000)));
 
     return 0;
 }
