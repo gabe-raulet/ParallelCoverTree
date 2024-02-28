@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <iostream>
+#include <memory>
 
 class Point
 {
@@ -32,8 +33,7 @@ private:
 class PointStore
 {
 public:
-    PointStore(size_t n, int d, double *mem);
-    ~PointStore() { delete[] mem; }
+    PointStore(size_t n, int d, std::shared_ptr<double> mem);
 
     int getdim() const { return dim; }
     size_t getsize() const { return points.size(); }
@@ -46,7 +46,7 @@ public:
 
 private:
     int dim;
-    double *mem;
+    std::shared_ptr<double> mem;
     std::vector<Point> points;
 };
 
