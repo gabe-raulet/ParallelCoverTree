@@ -17,7 +17,7 @@ COMPILER=g++-13
 endif
 
 INCLUDES=-I./include
-PROGS=test_cover_tree test_queries test_all test_construction create_data
+PROGS=test_cover_tree test_queries test_all test_construction create_data test_point_funcs
 
 all: $(PROGS)
 
@@ -25,6 +25,9 @@ test_all: programs/test_all.cpp CoverTree.o Point.o read_args.o
 	$(COMPILER) $(FLAGS) $(INCLUDES) -o $@ $^
 
 test_construction: programs/test_construction.cpp CoverTree.o Point.o read_args.o
+	$(COMPILER) $(FLAGS) $(INCLUDES) -o $@ $^
+
+test_point_funcs: programs/test_point_funcs.cpp CoverTree.o Point.o read_args.o
 	$(COMPILER) $(FLAGS) $(INCLUDES) -o $@ $^
 
 test_cover_tree: programs/test_cover_tree.cpp CoverTree.o Point.o read_args.o

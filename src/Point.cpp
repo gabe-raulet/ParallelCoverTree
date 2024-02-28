@@ -142,3 +142,28 @@ PointStore PointStore::pgenerate_random_points(size_t n, int d, int seed, double
 
     return PointStore(n, d, mem);
 }
+
+bool operator==(const Point& pt1, const Point& pt2)
+{
+    if (pt1.d != pt2.d) return false;
+
+    double *p1 = pt1.data, *p2 = pt2.data;
+
+    for (int i = 0; i < pt1.d; ++i)
+        if (*p1++ != *p2++)
+            return false;
+
+    return true;
+}
+
+bool operator==(const PointStore& lhs, const PointStore& rhs)
+{
+    if (lhs.getsize() != rhs.getsize() || lhs.getdim() != rhs.getdim())
+        return false;
+
+    for (size_t i = 0; i < lhs.getsize(); ++i)
+        if (!(lhs[i] == rhs[i]))
+            return false;
+
+    return true;
+}

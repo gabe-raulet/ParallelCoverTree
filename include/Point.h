@@ -15,11 +15,8 @@ public:
     int getdim() const { return d; }
     const void* getdata() const { return static_cast<const void*>(data); }
 
-    //static std::vector<Point> random_points(size_t num_points, int d, int seed = -1);
-    //static void write_points(const std::vector<Point>& points, const char *fname);
-    //static void read_points(std::vector<Point>& points, const char *fname);
-
     friend double distance(const Point& pt1, const Point& pt2);
+    friend bool operator==(const Point& pt1, const Point& pt2);
     friend std::ostream& operator<<(std::ostream& stream, const Point& p);
 
     ~Point() { if (isowner) delete[] data; }
@@ -46,6 +43,8 @@ public:
     static PointStore read_points(const char *fname);
     static PointStore generate_random_points(size_t n, int d, int seed, double min, double max);
     static PointStore pgenerate_random_points(size_t n, int d, int seed, double min, double max, int nthreads);
+
+    friend bool operator==(const PointStore& lhs, const PointStore& rhs);
 
 private:
     int dim;
