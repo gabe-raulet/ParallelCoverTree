@@ -26,8 +26,8 @@ int main(int argc, char *argv[])
 
     double telapsed, t_serial_build;
 
-    std::vector<Point> points;
-    Point::read_points(points, points_fname);
+    //std::vector<Point> points;
+    PointStore points = PointStore::read_points(points_fname);
 
     omp_set_num_threads(1);
 

@@ -37,13 +37,15 @@ int main(int argc, char *argv[])
     double t;
 
     t = -omp_get_wtime();
-    std::vector<Point> points = Point::random_points(n, d, seed);
+    PointStore points = PointStore::generate_random_points(n, d, seed, -1.0, 1.0);
+    //std::vector<Point> points = Point::random_points(n, d, seed);
     t += omp_get_wtime();
 
     fprintf(stderr, "Generated %lld random %dd points in %.4f seconds (%.2f points per millisecond)\n", n, d, t, ((n+0.0)/(t*1000)));
 
     t = -omp_get_wtime();
-    Point::write_points(points, output);
+    points.write_points(output);
+    //Point::write_points(points, output);
     t += omp_get_wtime();
 
     fprintf(stderr, "Wrote %lld %dd points to file '%s' in %.4f seconds (%.2f points per millisecond)\n", n, d, output, t, ((n+0.0)/(t*1000)));

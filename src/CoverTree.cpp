@@ -360,7 +360,7 @@ double CoverTree::get_neighborhood_graph(double radius, std::vector<std::vector<
 void CoverTree::print_info() const
 {
     std::cout << "* number of points: " << num_points() << "\n";
-    std::cout << "* dimension: " << points.back().getdim() << "\n";
+    std::cout << "* dimension: " << points.getdim() << "\n";
     std::cout << "* number of vertices: " << num_vertices() << "\n";
     std::cout << "* number of levels: " << num_levels() << "\n\n";
 

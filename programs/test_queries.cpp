@@ -24,10 +24,11 @@ int main(int argc, char *argv[])
     double radius = atof(argv[2]);
 
     double t, t2;
-    std::vector<Point> points;
+    //std::vector<Point> points;
     std::vector<std::vector<int64_t>> truth, nng;
 
-    Point::read_points(points, points_fname);
+    //Point::read_points(points, points_fname);
+    PointStore points = PointStore::read_points(points_fname);
     CoverTree ct = CoverTree::build(points);
 
     omp_set_num_threads(1);

@@ -18,7 +18,8 @@ int main(int argc, char *argv[])
         for (int exp = 12; exp <= 22; ++exp)
         {
             int64_t num_points = 1LL << exp;
-            std::vector<Point> points = Point::random_points(num_points, d, seed*exp);
+            PointStore points = PointStore::generate_random_points(num_points, d, seed*exp, -1.0, 1.0);
+            //std::vector<Point> points = Point::random_points(num_points, d, seed*exp);
 
             double t;
 

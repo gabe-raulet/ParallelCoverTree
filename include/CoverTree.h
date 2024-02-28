@@ -9,16 +9,16 @@
 class CoverTree
 {
 public:
-    CoverTree(const std::vector<Point>& points) : points(points) {}
+    CoverTree(const PointStore& points) : points(points) {}
 
-    static CoverTree build(const std::vector<Point>& points)
+    static CoverTree build(const PointStore& points)
     {
         CoverTree ct(points);
         ct.build_tree();
         return ct;
     }
 
-    static CoverTree build_recursive(const std::vector<Point>& points)
+    static CoverTree build_recursive(const PointStore& points)
     {
         CoverTree ct(points);
         ct.build_tree_recursive();
@@ -26,7 +26,7 @@ public:
     }
 
     size_t num_vertices() const { return pt.size(); }
-    size_t num_points() const { return points.size(); }
+    size_t num_points() const { return points.getsize(); }
     size_t num_levels() const { return levelset.size(); }
 
     size_t radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const;
@@ -39,13 +39,13 @@ public:
     size_t get_child_ids(int64_t vertex_id, std::vector<int64_t>& child_ids) const;
     size_t get_level_ids(int64_t vertex_level, std::vector<int64_t>& level_ids) const;
 
-    const std::vector<Point>& get_points() const { return points; }
+    const std::vector<Point>& get_points() const { return points.getvector(); }
 
     double average_vertex_degree(int64_t level) const;
     void print_info() const;
 
 private:
-    std::vector<Point> points;
+    PointStore points;
     double max_radius;
 
     std::vector<int64_t> pt;

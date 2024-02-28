@@ -31,10 +31,10 @@ int main(int argc, char *argv[])
 
     double telapsed, t_serial_build, t_serial_nng;
 
-    std::vector<Point> points;
+    //std::vector<Point> points;
     nng_t truth, nng;
 
-    Point::read_points(points, points_fname);
+    PointStore points = PointStore::read_points(points_fname);
 
     omp_set_num_threads(1);
 
