@@ -37,9 +37,6 @@ test_queries: programs/test_queries.cpp CoverTree.o Point.o read_args.o
 Point.o: src/Point.cpp include/Point.h
 	$(COMPILER) $(FLAGS) $(INCLUDES) -c -o $@ $<
 
-BruteForce.o: src/BruteForce.cpp include/BruteForce.h
-	$(COMPILER) $(FLAGS) $(INCLUDES) -c -o $@ $<
-
 CoverTree.o: src/CoverTree.cpp include/CoverTree.h
 	$(COMPILER) $(FLAGS) $(INCLUDES) -c -o $@ $<
 
