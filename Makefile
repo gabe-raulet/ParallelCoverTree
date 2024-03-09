@@ -19,13 +19,16 @@ INCLUDES=-I./include
 all: cluster_benchmark build_benchmark create_data
 
 test: cluster_benchmark
-	@./cluster_benchmark -i testdata/points.1K.2d.fvecs -r 0.075 -o testdata/points.1K.2d.r075.clusters.compare
+	@./build_benchmark -i testdata/points.1K.2d.fvecs -o testdata/1K.2d.cover_tree
+	@./cluster_benchmark -i testdata/1K.2d.cover_tree -r 0.075 -o testdata/points.1K.2d.r075.clusters.compare
 	@diff -s testdata/points.1K.2d.r075.clusters testdata/points.1K.2d.r075.clusters.compare
-	@./cluster_benchmark -i testdata/points.1K.4d.fvecs -r 0.3 -o testdata/points.1K.4d.r3.clusters.compare
+	@./build_benchmark -i testdata/points.1K.4d.fvecs -o testdata/1K.4d.cover_tree
+	@./cluster_benchmark -i testdata/1K.4d.cover_tree -r 0.3 -o testdata/points.1K.4d.r3.clusters.compare
 	@diff -s testdata/points.1K.4d.r3.clusters testdata/points.1K.4d.r3.clusters.compare
-	@./cluster_benchmark -i testdata/points.1K.8d.fvecs -r 0.975 -o testdata/points.1K.8d.r975.clusters.compare
+	@./build_benchmark -i testdata/points.1K.8d.fvecs -o testdata/1K.8d.cover_tree
+	@./cluster_benchmark -i testdata/1K.8d.cover_tree -r 0.975 -o testdata/points.1K.8d.r975.clusters.compare
 	@diff -s testdata/points.1K.8d.r975.clusters testdata/points.1K.8d.r975.clusters.compare
-	@rm -rf testdata/*.clusters.compare
+	@rm -rf testdata/*.clusters.compare testdata/*.cover_tree
 
 cluster_benchmark: programs/cluster_benchmark.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(COMPILER) -o cluster_benchmark $(INCLUDES) $(FLAGS) programs/cluster_benchmark.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp

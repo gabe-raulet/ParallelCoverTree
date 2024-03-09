@@ -17,12 +17,12 @@
 static int verbose = 0;
 
 std::vector<std::vector<index_t>>
-get_clusters(const CoverTree& tree, const float *p, size_t n, int d, double base, double epsilon);
+get_clusters(const CoverTree& tree, const float *p, size_t n, int d, double epsilon);
 
 int main(int argc, char *argv[])
 {
     double t;
-    double base = 2., epsilon = 1.;
+    double epsilon;
     char *infname = NULL;
     char *outfname = NULL;
     int nthreads = 1;
@@ -30,53 +30,32 @@ int main(int argc, char *argv[])
     if (argc == 1 || find_arg_idx(argc, argv, "-h") >= 0)
     {
         fprintf(stderr, "Usage: %s [options] [..]\n", argv[0]);
-        fprintf(stderr, "Options: -i FILE    input filename [required]\n");
-        fprintf(stderr, "         -r FLOAT   epsilon radius [default: %.2f]\n", epsilon);
-        fprintf(stderr, "         -b FLOAT   cover tree base [default: %.2f]\n", base);
+        fprintf(stderr, "Options: -i FILE    input cover tree filename [required]\n");
+        fprintf(stderr, "         -r FLOAT   epsilon radius [required]\n");
         fprintf(stderr, "         -o FILE    cluster filename [default: none]\n");
         fprintf(stderr, "         -t INT     number of threads [default: %d]\n", nthreads);
         fprintf(stderr, "         -v         log to stderr\n");
-        fprintf(stderr, "         -B         skip clustering step\n");
         fprintf(stderr, "         -h         help message\n");
         return 1;
     }
 
-    base = read_double_arg(argc, argv, "-b", &base);
-    epsilon = read_double_arg(argc, argv, "-r", &epsilon);
-    outfname = read_string_arg(argc, argv, "-o", &outfname);
     infname = read_string_arg(argc, argv, "-i", NULL);
+    epsilon = read_double_arg(argc, argv, "-r", NULL);
+    outfname = read_string_arg(argc, argv, "-o", &outfname);
     nthreads = read_int_arg(argc, argv, "-t", &nthreads);
     verbose = !!(find_arg_idx(argc, argv, "-v") >= 0);
 
     omp_set_num_threads(std::min(nthreads, omp_get_max_threads()));
 
-    int d;
-    size_t n;
-
     t = -omp_get_wtime();
-    auto pointmem = read_vecs_file(infname, &d, &n);
+    CoverTree tree;
+    tree.read_from_file(infname);
     t += omp_get_wtime();
 
-    const float *p = pointmem.data();
-
-    if (verbose) fprintf(stderr, "Read points file '%s' (%lld points of dimension %d) in %.3f seconds\n", infname, n, d, t);
-
-    t = -omp_get_wtime();
-    CoverTree tree(p, n, d, base);
-    t += omp_get_wtime();
-
-    if (verbose) fprintf(stderr, "Constructed cover tree in %.3f seconds\n", t);
-
-    assert(tree.is_full());
-    assert(tree.is_nested());
-    assert(tree.is_covering());
-
+    if (verbose) fprintf(stderr, "Read cover tree from file '%s' in %.3f seconds\n", infname, t);
     if (verbose) tree.print_info();
 
-    if (find_arg_idx(argc, argv, "-B") >= 0)
-        return 0;
-
-    auto clusters = get_clusters(tree, p, n, d, base, epsilon);
+    auto clusters = get_clusters(tree, tree.getdata(), tree.num_points(), tree.getdim(), epsilon);
 
     if (outfname)
     {
@@ -93,7 +72,6 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
 
 std::vector<std::vector<index_t>> connected_components(const std::vector<std::vector<index_t>>& graph)
 {
@@ -135,7 +113,7 @@ std::vector<std::vector<index_t>> connected_components(const std::vector<std::ve
 }
 
 std::vector<std::vector<index_t>>
-get_clusters(const CoverTree& tree, const float *p, size_t n, int d, double base, double epsilon)
+get_clusters(const CoverTree& tree, const float *p, size_t n, int d, double epsilon)
 {
     double t;
 

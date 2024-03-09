@@ -18,6 +18,7 @@ public:
     index_t num_points() const { return npoints; }
     index_t num_levels() const { return levelset.size(); }
     int getdim() const { return d; }
+    const float* getdata() const { return pointmem.get(); }
 
     index_t get_point_id(index_t vertex_id) const { return pt[vertex_id]; }
     index_t get_vertex_level(index_t vertex_id) const { return level[vertex_id]; }
