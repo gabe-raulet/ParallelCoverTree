@@ -2,9 +2,6 @@
 *.out
 *.o
 *.bin
-test_cover_tree
-test_queries
-test_all
-test_construction
-test_point_funcs
+*.swp
 create_data
+cluster_benchmark

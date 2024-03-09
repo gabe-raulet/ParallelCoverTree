@@ -1,82 +1,218 @@
 #include "CoverTree.h"
-#include <cmath>
-#include <tuple>
-#include <vector>
 #include <algorithm>
-#include <cassert>
 #include <unordered_set>
-#include <algorithm>
 #include <iostream>
+#include <random>
+#include <tuple>
+#include <assert.h>
 #include <stdio.h>
 #include <omp.h>
 
-double CoverTree::point_dist(int64_t point_id1, int64_t point_id2) const
+double distance(const float *p, const float *q, int d)
 {
-    return distance(points[point_id1], points[point_id2]) / max_radius;
+    double sum = 0., di;
+
+    for (int i = 0; i < d; ++i)
+    {
+        di = p[i] - q[i];
+        sum += di*di;
+    }
+
+    return std::sqrt(sum);
 }
 
-double CoverTree::vertex_ball_radius(int64_t vertex_id) const
-{
-    return pow(2., -1. * get_vertex_level(vertex_id));
+CoverTree::CoverTree(const float *p, index_t n, int d, double base)
+    : base(base), pointmem(new float[d*n]), npoints(n), d(d)
+{ 
+    std::copy(p, p + n*d, pointmem.get());
+    build_tree();
 }
 
-size_t CoverTree::get_child_ids(int64_t vertex_id, std::vector<int64_t>& child_ids) const
+bool CoverTree::is_full() const
 {
-    child_ids.clear();
-    const auto& ids = children[vertex_id];
-    std::copy(ids.begin(), ids.end(), std::back_inserter(child_ids));
-    return child_ids.size();
+    std::vector<bool> bits(num_points(), false);
+
+    for (size_t i = 0; i < num_vertices(); ++i)
+        bits[get_point_id(i)] = true;
+
+    return std::all_of(bits.begin(), bits.end(), [](bool item) { return item == true; });
 }
 
-size_t CoverTree::get_level_ids(int64_t vertex_level, std::vector<int64_t>& level_ids) const
+bool CoverTree::is_nested() const
 {
-    level_ids.clear();
-    const auto& ids = levelset[vertex_level];
-    std::copy(ids.begin(), ids.end(), std::back_inserter(level_ids));
-    return level_ids.size();
-}
-
-size_t CoverTree::radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const
-{
-    std::unordered_set<int64_t> idset;
-    std::vector<int64_t> stack = {0};
-
-    int64_t u, v;
-    std::vector<int64_t> mychildren;
-    size_t m;
+    std::vector<index_t> stack = {0};
+    std::vector<index_t> mychildren;
+    index_t u, v;
+    index_t m;
+    bool found;
 
     while (stack.size() != 0)
     {
         u = stack.back(); stack.pop_back();
-        m = get_child_ids(u, mychildren);
+        mychildren = get_child_ids(u);
 
-        for (size_t i = 0; i < m; ++i)
+        found = false;
+
+        for (index_t v : mychildren)
         {
-            v = mychildren[i];
+            stack.push_back(v);
 
-            if (distance(query, points[get_point_id(v)]) <= radius + max_radius*vertex_ball_radius(v))
+            if (get_point_id(u) == get_point_id(v))
             {
-                stack.push_back(v);
-            }
-
-            if (distance(query, points[get_point_id(v)]) <= radius)
-            {
-                idset.insert(get_point_id(v));
+                if (found) return false;
+                found = true;
             }
         }
     }
 
-    ids.assign(idset.begin(), idset.end());
-    return ids.size();
+    return true;
 }
 
-int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
+bool CoverTree::is_covering() const
 {
-    int64_t vertex_level;
-    int64_t vertex_id = num_vertices();
+    std::vector<index_t> stack = {0};
+    std::vector<index_t> mychildren;
+    index_t u, v;
+    index_t m;
+    double ball_radius, d;
+
+    while (stack.size() != 0)
+    {
+        u = stack.back(); stack.pop_back();
+        mychildren = get_child_ids(u);
+        ball_radius = vertex_ball_radius(u);
+
+        for (index_t v : mychildren)
+        {
+            stack.push_back(v);
+            d = point_dist(get_point_id(u), get_point_id(v));
+
+            if (d > ball_radius)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+std::vector<index_t> CoverTree::radii_query(const float *query, double radius) const
+{
+    std::unordered_set<index_t> idset;
+    std::vector<index_t> stack = {0};
+
+    index_t u, v;
+    std::vector<index_t> mychildren;
+
+    while (stack.size() != 0)
+    {
+        u = stack.back(); stack.pop_back();
+        mychildren = get_child_ids(u);
+
+        for (index_t v : mychildren)
+        {
+            const float *p = &pointmem[get_point_id(v)*d];
+
+            if (distance(query, p, d) <= radius + max_radius*vertex_ball_radius(v))
+                stack.push_back(v);
+
+            if (distance(query, p, d) <= radius)
+                idset.insert(get_point_id(v));
+        }
+    }
+
+    return std::vector<index_t>(idset.begin(), idset.end());
+}
+
+void CoverTree::build_tree()
+{
+    set_max_radius();
+
+    std::vector<std::tuple<index_t, std::vector<index_t>>> stack;
+    stack.emplace_back(add_vertex(0, -1), std::vector<index_t>(npoints));
+
+    for (index_t i = 0; i < npoints; ++i)
+        std::get<1>(stack.back())[i] = i;
+
+    while (stack.size() != 0)
+    {
+        index_t parent_id = std::get<0>(stack.back());
+        const auto& descendants = std::get<1>(stack.back());
+        index_t n_descendants = descendants.size();
+        assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
+
+        if (n_descendants == 1)
+        {
+            stack.pop_back();
+            continue;
+        }
+
+        std::vector<double> dists(n_descendants);
+        std::vector<index_t> closest(n_descendants, descendants[0]);
+
+        auto it = descendants.begin();
+        std::generate(dists.begin(), dists.end(), [&]() { return point_dist(descendants[0], *it++); });
+
+        if (std::all_of(dists.begin(), dists.end(), [](double d) { return d == 0; }))
+        {
+            for (index_t duplicate_child_pt : descendants)
+                add_vertex(duplicate_child_pt, parent_id);
+
+            stack.pop_back();
+            continue;
+        }
+
+        std::vector<index_t> child_descendants = {get_point_id(parent_id)};
+        double parent_ball_radius = vertex_ball_radius(parent_id);
+
+        for (index_t k = 0; k < n_descendants; ++k)
+        {
+            index_t farthest = std::distance(dists.begin(), std::max_element(dists.begin(), dists.end()));
+
+            if (dists[farthest] <= (parent_ball_radius/base))
+                break;
+
+            index_t next_child_id = descendants[farthest];
+            child_descendants.push_back(next_child_id);
+
+            for (index_t j = 0; j < n_descendants; ++j)
+            {
+                double lastdist = dists[j];
+                double curdist = point_dist(descendants[j], next_child_id);
+
+                if (curdist <= lastdist)
+                {
+                    dists[j] = curdist;
+                    closest[j] = next_child_id;
+                }
+            }
+        }
+
+        std::vector<std::tuple<index_t, std::vector<index_t>>> next_parents;
+
+        for (index_t child_pt : child_descendants)
+        {
+            std::vector<index_t> next_descendants = {child_pt};
+
+            for (index_t j = 0; j < n_descendants; ++j)
+                if (closest[j] == child_pt && descendants[j] != child_pt)
+                    next_descendants.push_back(descendants[j]);
+
+            index_t next_point_id = add_vertex(child_pt, parent_id);
+            next_parents.emplace_back(next_point_id, next_descendants);
+        }
+
+        stack.pop_back();
+        stack.reserve(stack.size() + next_parents.size());
+        std::copy(next_parents.begin(), next_parents.end(), std::back_inserter(stack));
+    }
+}
+
+index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
+{
+    index_t vertex_level;
+    index_t vertex_id = num_vertices();
 
     pt.push_back(point_id);
-    parent.push_back(parent_id);
     children.resize(children.size()+1);
 
     if (parent_id >= 0)
@@ -90,10 +226,7 @@ int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
     }
 
     level.push_back(vertex_level);
-
-    if (num_levels() < vertex_level+1)
-        levelset.resize(vertex_level+1);
-
+    levelset.resize(std::max(vertex_level+1, static_cast<index_t>(levelset.size())));
     levelset[vertex_level].push_back(vertex_id);
 
     return vertex_id;
@@ -103,229 +236,110 @@ void CoverTree::set_max_radius()
 {
     max_radius = -1;
 
-    for (int64_t i = 0; i < num_points(); ++i)
+    for (index_t i = 0; i < npoints; ++i)
     {
-        max_radius = std::max(max_radius, distance(points[0], points[i]));
+        max_radius = std::max(max_radius, distance(&pointmem[0], &pointmem[i*d], d));
     }
 }
 
-std::vector<std::tuple<int64_t, std::vector<int64_t>>> CoverTree::init_build_stack()
+double CoverTree::point_dist(index_t id1, index_t id2) const
 {
-    std::vector<std::tuple<int64_t, std::vector<int64_t>>> stack;
-    stack.emplace_back(add_vertex(0, -1), std::vector<int64_t>(num_points()));
-
-    for (int64_t i = 0; i < num_points(); ++i)
-        std::get<1>(stack.back())[i] = i;
-
-    return std::move(stack);
+    return distance(&pointmem[d*id1], &pointmem[d*id2], d) / max_radius;
 }
 
-std::vector<std::tuple<int64_t, std::vector<int64_t>>>
-CoverTree::get_next_parents(int64_t parent_id, const std::vector<int64_t>& descendants)
+double CoverTree::vertex_ball_radius(index_t vertex_id) const
 {
-    size_t n_descendants = descendants.size();
-    std::vector<double> dists(n_descendants);
-    std::vector<int64_t> closest(n_descendants);
-
-    for (size_t i = 0; i < n_descendants; ++i)
-    {
-        dists[i] = point_dist(descendants[0], descendants[i]);
-        closest[i] = descendants[0];
-    }
-
-    std::vector<int64_t> child_descendants = {get_point_id(parent_id)};
-    double parent_ball_radius = vertex_ball_radius(parent_id);
-
-    for (size_t k = 0; k < n_descendants; ++k)
-    {
-        size_t farthest = std::distance(dists.begin(), std::max_element(dists.begin(), dists.end()));
-
-        if (dists[farthest] <= 0.5 * parent_ball_radius)
-            break;
-
-        int64_t next_child_id = descendants[farthest];
-        child_descendants.push_back(next_child_id);
-
-        for (size_t j = 0; j < n_descendants; ++j)
-        {
-            double lastdist = dists[j];
-            double curdist = point_dist(descendants[j], next_child_id);
-
-            if (curdist <= lastdist)
-            {
-                dists[j] = curdist;
-                closest[j] = next_child_id;
-            }
-        }
-    }
-
-    std::vector<std::tuple<int64_t, std::vector<int64_t>>> next_parents;
-
-    for (auto itr = child_descendants.begin(); itr != child_descendants.end(); ++itr)
-    {
-        int64_t child_pt = *itr;
-        std::vector<int64_t> next_descendants = {child_pt};
-
-        for (size_t j = 0; j < n_descendants; ++j)
-            if (closest[j] == child_pt && descendants[j] != child_pt)
-                next_descendants.push_back(descendants[j]);
-
-        int64_t next_point_id;
-
-        next_point_id = add_vertex(child_pt, parent_id);
-        next_parents.emplace_back(next_point_id, next_descendants);
-    }
-
-    return next_parents;
-}
-
-void CoverTree::build_tree()
-{
-    set_max_radius();
-    auto stack = init_build_stack();
-
-    std::vector<double> dists(num_points());
-    std::vector<int64_t> closest(num_points());
-
-    while (stack.size() != 0)
-    {
-        int64_t parent_id = std::get<0>(stack.back());
-        const auto descendants = std::get<1>(stack.back());
-        stack.pop_back();
-
-        size_t n_descendants = descendants.size();
-        assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
-
-        if (n_descendants == 1)
-            continue;
-
-        auto next_parents = get_next_parents(parent_id, descendants);
-
-        for (auto it = next_parents.begin(); it != next_parents.end(); ++it)
-            stack.push_back(*it);
-    }
-
-    assert(is_full());
-    assert(is_nested());
-    assert(is_covering());
-}
-
-bool CoverTree::is_full() const
-{
-    std::vector<bool> bits(num_points(), false);
-
-    for (size_t i = 0; i < num_vertices(); ++i)
-        bits[get_point_id(i)] = true;
-
-    for (size_t i = 0; i < num_points(); ++i)
-        if (!bits[i]) return false;
-
-    return true;
-}
-
-bool CoverTree::is_nested() const
-{
-    std::vector<int64_t> stack = {0};
-    std::vector<int64_t> mychildren;
-    int64_t u, v;
-    size_t m;
-    bool found;
-
-    while (stack.size() != 0)
-    {
-        u = stack.back(); stack.pop_back();
-        m = get_child_ids(u, mychildren);
-
-        found = false;
-        for (size_t i = 0; i < m; ++i)
-        {
-            v = mychildren[i];
-            stack.push_back(v);
-
-            if (get_point_id(u) == get_point_id(v))
-            {
-                if (found) { return false; }
-                found = true;
-            }
-        }
-    }
-
-    return true;
-}
-
-bool CoverTree::is_covering() const
-{
-    std::vector<int64_t> stack = {0};
-    std::vector<int64_t> mychildren;
-    int64_t u, v;
-    size_t m;
-    double ball_radius, d;
-
-    while (stack.size() != 0)
-    {
-        u = stack.back(); stack.pop_back();
-        m = get_child_ids(u, mychildren);
-        ball_radius = vertex_ball_radius(u);
-
-        for (size_t i = 0; i < m; ++i)
-        {
-            v = mychildren[i];
-            stack.push_back(v);
-            d = point_dist(get_point_id(u), get_point_id(v));
-
-            if (d > ball_radius)
-                return false;
-        }
-    }
-
-    return true;
-}
-
-double CoverTree::average_vertex_degree(int64_t level) const
-{
-    const auto& vs = levelset[level];
-    size_t sum = 0;
-
-    for (auto vit = vs.begin(); vit != vs.end(); ++vit)
-        sum += children[*vit].size();
-
-    return (sum + 0.0) / (vs.size() + 0.0);
-}
-
-double CoverTree::get_neighborhood_graph(double radius, std::vector<std::vector<int64_t>>& nng, bool sort) const
-{
-    int64_t n = num_points();
-    nng.resize(num_points());
-
-    double t = -omp_get_wtime();
-
-    #pragma omp parallel for schedule(dynamic, 100)
-    for (int64_t u = 0; u < n; ++u)
-    {
-        radii_query(points[u], radius, nng[u]);
-    }
-
-    t += omp_get_wtime();
-
-    if (sort)
-        for (auto it = nng.begin(); it != nng.end(); ++it)
-            std::sort(it->begin(), it->end());
-
-    return t;
+    return std::pow(base, -1. * get_vertex_level(vertex_id));
 }
 
 void CoverTree::print_info() const
 {
     std::cout << "* number of points: " << num_points() << "\n";
-    std::cout << "* dimension: " << points.getdim() << "\n";
+    std::cout << "* dimension: " << getdim() << "\n";
     std::cout << "* number of vertices: " << num_vertices() << "\n";
     std::cout << "* number of levels: " << num_levels() << "\n\n";
 
     for (int64_t i = 0; i < num_levels(); ++i)
     {
-        printf("level %ld has %lld vertices of average degree %.3f\n", i, levelset[i].size(), average_vertex_degree(i));
-        //std::cout << "level " << i << " has " << levelset[i].size() << " vertices of average degree " << average_vertex_degree(i) << "\n";
+        double average_vertex_degree = 0;
+
+        for (const auto& v : levelset[i])
+        {
+            average_vertex_degree += children[v].size();
+        }
+
+        average_vertex_degree /= levelset[i].size();
+        printf("level %ld has %lld vertices of average degree %.3f\n", i, levelset[i].size(), average_vertex_degree);
     }
 
     std::cout << std::endl;
+
+}
+
+void CoverTree::read_from_file(const char *fname)
+{
+    FILE *f = fopen(fname, "r");
+    assert(f != NULL);
+
+    index_t n_vertices;
+
+    fread(&npoints, sizeof(index_t), 1, f); assert(npoints >= 1);
+    fread(&d, sizeof(int), 1, f); assert(d >= 1);
+
+    pointmem.reset(new float[d*npoints]);
+    fread(pointmem.get(), sizeof(float), d*npoints, f);
+    fread(&max_radius, sizeof(double), 1, f);
+    fread(&base, sizeof(double), 1, f);
+    fread(&n_vertices, sizeof(index_t), 1, f);
+
+    std::vector<index_t> parent(n_vertices);
+    pt.resize(n_vertices);
+    level.resize(n_vertices);
+
+    fread(pt.data(), sizeof(index_t), n_vertices, f);
+    fread(parent.data(), sizeof(index_t), n_vertices, f);
+    fread(level.data(), sizeof(index_t), n_vertices, f);
+
+    index_t num_levels = std::accumulate(level.begin(), level.end(), static_cast<index_t>(0), [](auto a, auto b) { return std::max(a,b); }) + 1;
+
+    children.resize(n_vertices);
+    levelset.resize(num_levels);
+    levelset[level[0]].push_back(0);
+
+    for (index_t v = 1; v < n_vertices; ++v)
+    {
+        children[parent[v]].push_back(v);
+        levelset[level[v]].push_back(v);
+    }
+
+    fclose(f);
+}
+
+void CoverTree::write_to_file(const char *fname) const
+{
+    index_t n_vertices = num_vertices();
+    std::vector<index_t> parent(n_vertices);
+    parent[0] = -1;
+
+    for (index_t i = 0; i < n_vertices; ++i)
+    {
+        const auto& child_ids = children[i];
+
+        for (index_t child_id : child_ids)
+            parent[child_id] = i;
+    }
+
+    FILE *f = fopen(fname, "w");
+
+    fwrite(&npoints, sizeof(index_t), 1, f);
+    fwrite(&d, sizeof(int), 1, f);
+    fwrite(pointmem.get(), sizeof(float), d*npoints, f);
+    fwrite(&max_radius, sizeof(double), 1, f);
+    fwrite(&base, sizeof(double), 1, f);
+    fwrite(&n_vertices, sizeof(index_t), 1, f);
+    fwrite(pt.data(), sizeof(index_t), n_vertices, f);
+    fwrite(parent.data(), sizeof(index_t), n_vertices, f);
+    fwrite(level.data(), sizeof(index_t), n_vertices, f);
+
+    fclose(f);
 }

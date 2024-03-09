@@ -1,67 +1,54 @@
 #ifndef COVER_TREE_H_
 #define COVER_TREE_H_
 
-#include "Point.h"
+#include <stdint.h>
+#include <math.h>
 #include <vector>
-#include <cstdint>
-#include <cstddef>
+#include <memory>
+
+typedef int64_t index_t;
 
 class CoverTree
 {
 public:
-    CoverTree(const PointStore& points) : points(points) {}
+    CoverTree() : max_radius(0), base(2), pointmem(NULL), npoints(0), d(0) {}
+    CoverTree(const float *p, index_t n, int d, double base = 2.);
 
-    static CoverTree build(const PointStore& points)
-    {
-        CoverTree ct(points);
-        ct.build_tree();
-        return ct;
-    }
+    index_t num_vertices() const { return pt.size(); }
+    index_t num_points() const { return npoints; }
+    index_t num_levels() const { return levelset.size(); }
+    int getdim() const { return d; }
 
-    size_t num_vertices() const { return pt.size(); }
-    size_t num_points() const { return points.getsize(); }
-    size_t num_levels() const { return levelset.size(); }
-
-    size_t radii_query(const Point& query, double radius, std::vector<int64_t>& ids) const;
-    double get_neighborhood_graph(double radius, std::vector<std::vector<int64_t>>& nng, bool sort = true) const;
-
-    int64_t get_vertex_level(int64_t vertex_id) const { return level[vertex_id]; }
-    int64_t get_point_id(int64_t vertex_id) const { return pt[vertex_id]; }
-    int64_t get_parent_id(int64_t vertex_id) const { return parent[vertex_id]; }
-
-    size_t get_child_ids(int64_t vertex_id, std::vector<int64_t>& child_ids) const;
-    size_t get_level_ids(int64_t vertex_level, std::vector<int64_t>& level_ids) const;
-
-    const std::vector<Point>& get_points() const { return points.getvector(); }
-
-    double average_vertex_degree(int64_t level) const;
-    void print_info() const;
-
-private:
-    PointStore points;
-    double max_radius;
-
-    std::vector<int64_t> pt;
-    std::vector<int64_t> parent;
-    std::vector<int64_t> level;
-
-    std::vector<std::vector<int64_t>> children;
-    std::vector<std::vector<int64_t>> levelset;
-
-    void build_tree();
-    int64_t add_vertex(int64_t point_id, int64_t parent_id);
-    double point_dist(int64_t point_id1, int64_t point_id2) const;
-    double vertex_ball_radius(int64_t vertex_id) const;
-
-    std::vector<std::tuple<int64_t, std::vector<int64_t>>>
-    get_next_parents(int64_t parent_id, const std::vector<int64_t>& descendants);
+    index_t get_point_id(index_t vertex_id) const { return pt[vertex_id]; }
+    index_t get_vertex_level(index_t vertex_id) const { return level[vertex_id]; }
+    std::vector<index_t> get_child_ids(index_t parent_id) const { return children[parent_id]; }
+    std::vector<index_t> radii_query(const float *query, double radius) const;
 
     bool is_full() const;
     bool is_nested() const;
     bool is_covering() const;
+    void print_info() const;
 
+    void write_to_file(const char *fname) const;
+    void read_from_file(const char *fname);
+
+private:
+    double max_radius, base;
+    std::unique_ptr<float[]> pointmem;
+    index_t npoints;
+    int d;
+
+    std::vector<index_t> pt;
+    std::vector<index_t> level;
+    std::vector<std::vector<index_t>> children;
+    std::vector<std::vector<index_t>> levelset;
+
+    void build_tree();
     void set_max_radius();
-    std::vector<std::tuple<int64_t, std::vector<int64_t>>> init_build_stack();
+    index_t add_vertex(index_t point_id, index_t parent_id);
+
+    double point_dist(index_t id1, index_t id2) const;
+    double vertex_ball_radius(index_t vertex_id) const;
 };
 
 #endif
