@@ -18,7 +18,7 @@ INCLUDES=-I./include
 
 all: cluster_benchmark build_benchmark create_data
 
-test: cluster_benchmark
+test: cluster_benchmark build_benchmark
 	@./build_benchmark -i testdata/points.1K.2d.fvecs -o testdata/1K.2d.cover_tree
 	@./cluster_benchmark -i testdata/1K.2d.cover_tree -r 0.075 -o testdata/points.1K.2d.r075.clusters.compare
 	@diff -s testdata/points.1K.2d.r075.clusters testdata/points.1K.2d.r075.clusters.compare
