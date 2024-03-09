@@ -169,10 +169,10 @@ std::vector<std::vector<index_t>> connected_components(const std::vector<std::ve
 
     for (;;)
     {
-        while (s < n && visited[s])
-            ++s;
+        auto it = std::find(visited.begin() + s, visited.end(), false);
 
-        if (s == n) break;
+        if (it == visited.end()) break;
+        s = it - visited.begin();
 
         component.clear();
         stack.resize(1);
@@ -188,9 +188,7 @@ std::vector<std::vector<index_t>> connected_components(const std::vector<std::ve
             visited[u] = true;
             component.push_back(u);
 
-            for (index_t v : graph[u])
-                if (!visited[v])
-                    stack.push_back(v);
+            std::copy_if(graph[u].begin(), graph[u].end(), std::back_inserter(stack), [&](index_t v) { return !visited[v]; });
         }
 
         std::sort(component.begin(), component.end());
