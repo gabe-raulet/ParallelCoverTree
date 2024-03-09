@@ -27,8 +27,8 @@ test: cluster_benchmark
 	@diff -s testdata/points.1K.8d.r975.clusters testdata/points.1K.8d.r975.clusters.compare
 	@rm -rf testdata/*.clusters.compare
 
-cluster_benchmark: programs/cluster_benchmark.cpp src/CoverTree.cpp include/CoverTree.h src/read_args.cpp include/read_args.h
-	$(COMPILER) -o cluster_benchmark $(INCLUDES) $(FLAGS) programs/cluster_benchmark.cpp src/CoverTree.cpp src/read_args.cpp
+cluster_benchmark: programs/cluster_benchmark.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
+	$(COMPILER) -o cluster_benchmark $(INCLUDES) $(FLAGS) programs/cluster_benchmark.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
 
 create_data: programs/create_data.cpp src/read_args.cpp include/read_args.h
 	$(COMPILER) -o create_data $(INCLUDES) $(FLAGS) programs/create_data.cpp src/read_args.cpp
