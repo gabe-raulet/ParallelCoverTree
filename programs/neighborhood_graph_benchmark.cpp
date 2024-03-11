@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     tree.read_from_file(infname);
     t += omp_get_wtime();
 
-    if (verbose) fprintf(stderr, "Read cover tree from file '%s' in %.3f seconds\n", infname, t);
+    fprintf(stderr, "Read cover tree from file '%s' in %.3f seconds\n", infname, t);
     if (verbose) tree.print_info();
 
     index_t n = tree.num_points();
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     for (index_t i = 0; i < n; ++i) graph[i] = tree.radii_query(&p[d*i], epsilon);
     t += omp_get_wtime();
 
-    if (verbose) fprintf(stderr, "Constructed neighborhood graph in %.3f seconds\n", t);
+    fprintf(stderr, "Constructed neighborhood graph in %.3f seconds\n", t);
 
     if (outfname)
     {

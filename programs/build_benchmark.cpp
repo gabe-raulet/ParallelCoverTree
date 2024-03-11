@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     auto pointmem = read_vecs_file(infname, &d, &n);
     t += omp_get_wtime();
 
-    if (verbose) fprintf(stderr, "Read points file '%s' (%lld points of dimension %d) in %.3f seconds\n", infname, n, d, t);
+    fprintf(stderr, "Read points file '%s' (%lld points of dimension %d) in %.3f seconds\n", infname, n, d, t);
 
     const float *p = pointmem.data();
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     CoverTree tree(p, n, d, base);
     t += omp_get_wtime();
 
-    if (verbose) fprintf(stderr, "Constructed cover tree in %.3f seconds\n", t);
+    fprintf(stderr, "Constructed cover tree in %.3f seconds\n", t);
 
     assert(tree.is_full());
     assert(tree.is_nested());
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     tree.write_to_file(outfname);
     t += omp_get_wtime();
 
-    if (verbose) fprintf(stderr, "Wrote cover tree to file '%s' in %.3f seconds\n", outfname, t);
+    fprintf(stderr, "Wrote cover tree to file '%s' in %.3f seconds\n", outfname, t);
 
     return 0;
 }

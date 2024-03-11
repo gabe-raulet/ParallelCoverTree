@@ -18,6 +18,12 @@ INCLUDES=-I./include
 
 all: cluster_benchmark build_benchmark neighborhood_graph_benchmark create_data
 
+install: cluster_benchmark build_benchmark neighborhood_graph_benchmark create_data
+	cp cluster_benchmark /global/homes/g/gabeh98/software/cover_tree
+	cp build_benchmark /global/homes/g/gabeh98/software/cover_tree
+	cp neighborhood_graph_benchmark /global/homes/g/gabeh98/software/cover_tree
+	cp create_data /global/homes/g/gabeh98/software/cover_tree
+
 test: cluster_benchmark build_benchmark
 	@./build_benchmark -i testdata/points.1K.2d.fvecs -o testdata/1K.2d.cover_tree
 	@./cluster_benchmark -i testdata/1K.2d.cover_tree -r 0.075 -o testdata/points.1K.2d.r075.clusters.compare
