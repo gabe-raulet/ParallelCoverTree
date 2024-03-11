@@ -11,9 +11,8 @@ endif
 
 ifeq ($(UNAME_S), Linux)
 CXX=g++
-MPICXX=g++
+MPICXX=mpic++
 FLAGS+=-fsanitize=address -fno-omit-frame-pointer
-MPIFLAGS+=-fsanitize=address -fno-omit-frame-pointer
 else
 CXX=g++-13
 MPICXX=mpic++
@@ -23,10 +22,11 @@ INCLUDES=-I./include
 
 all: build_tree build_epsilon_graph dist_build_epsilon_graph create_data
 
-install: cluster_test build_tree build_epsilon_graph create_data
+install: cluster_test build_tree build_epsilon_graph dist_build_epsilon_graph create_data
 	cp cluster_test /global/homes/g/gabeh98/software/cover_tree
 	cp build_tree /global/homes/g/gabeh98/software/cover_tree
 	cp build_epsilon_graph /global/homes/g/gabeh98/software/cover_tree
+	cp dist_build_epsilon_graph /global/homes/g/gabeh98/software/cover_tree
 	cp create_data /global/homes/g/gabeh98/software/cover_tree
 
 test: cluster_test build_tree
