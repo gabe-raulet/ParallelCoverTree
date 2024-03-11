@@ -6,7 +6,6 @@
 #include <tuple>
 #include <assert.h>
 #include <stdio.h>
-#include <omp.h>
 
 double distance(const float *p, const float *q, int d)
 {
