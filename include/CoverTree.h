@@ -5,6 +5,7 @@
 #include <math.h>
 #include <vector>
 #include <memory>
+#include <numeric>
 
 typedef int64_t index_t;
 
@@ -16,7 +17,7 @@ public:
 
     index_t num_vertices() const { return pt.size(); }
     index_t num_points() const { return npoints; }
-    index_t num_levels() const { return levelset.size(); }
+    index_t num_levels() const { return 1 + std::accumulate(level.begin(), level.end(), static_cast<index_t>(0), [](auto a, auto b) { return std::max(a,b); }); }
     int getdim() const { return d; }
     const float* getdata() const { return pointmem.get(); }
 
@@ -33,6 +34,8 @@ public:
     void write_to_file(const char *fname) const;
     void read_from_file(const char *fname);
 
+    std::vector<std::vector<index_t>> get_level_set() const;
+
 private:
     double max_radius, base;
     std::unique_ptr<float[]> pointmem;
@@ -42,7 +45,6 @@ private:
     std::vector<index_t> pt;
     std::vector<index_t> level;
     std::vector<std::vector<index_t>> children;
-    std::vector<std::vector<index_t>> levelset;
 
     void build_tree();
     void set_max_radius();

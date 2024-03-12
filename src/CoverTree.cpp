@@ -225,8 +225,6 @@ index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
     }
 
     level.push_back(vertex_level);
-    levelset.resize(std::max(vertex_level+1, static_cast<index_t>(levelset.size())));
-    levelset[vertex_level].push_back(vertex_id);
 
     return vertex_id;
 }
@@ -251,12 +249,26 @@ double CoverTree::vertex_ball_radius(index_t vertex_id) const
     return std::pow(base, -1. * get_vertex_level(vertex_id));
 }
 
+std::vector<std::vector<index_t>> CoverTree::get_level_set() const
+{
+    std::vector<std::vector<index_t>> levelset(num_levels()+1);
+
+    for (index_t i = 0; i < num_vertices(); ++i)
+    {
+        levelset[get_vertex_level(i)].push_back(i);
+    }
+
+    return levelset;
+}
+
 void CoverTree::print_info() const
 {
     std::cout << "* number of points: " << num_points() << "\n";
     std::cout << "* dimension: " << getdim() << "\n";
     std::cout << "* number of vertices: " << num_vertices() << "\n";
     std::cout << "* number of levels: " << num_levels() << "\n\n";
+
+    auto levelset = get_level_set();
 
     for (int64_t i = 0; i < num_levels(); ++i)
     {
@@ -302,14 +314,9 @@ void CoverTree::read_from_file(const char *fname)
     index_t num_levels = std::accumulate(level.begin(), level.end(), static_cast<index_t>(0), [](auto a, auto b) { return std::max(a,b); }) + 1;
 
     children.resize(n_vertices);
-    levelset.resize(num_levels);
-    levelset[level[0]].push_back(0);
 
     for (index_t v = 1; v < n_vertices; ++v)
-    {
         children[parent[v]].push_back(v);
-        levelset[level[v]].push_back(v);
-    }
 
     fclose(f);
 }
