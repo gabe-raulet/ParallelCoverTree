@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
 
     if (outfname)
     {
+        t = -omp_get_wtime();
         index_t m = 0;
 
         for (auto it = graph.begin(); it != graph.end(); ++it)
@@ -90,6 +91,9 @@ int main(int argc, char *argv[])
         }
 
         fclose(f);
+        t += omp_get_wtime();
+
+        fprintf(stderr, "Wrote graph to file '%s' in %.3f seconds\n", outfname, t);
     }
 
     return 0;

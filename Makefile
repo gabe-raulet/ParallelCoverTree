@@ -13,6 +13,7 @@ ifeq ($(UNAME_S), Linux)
 CXX=g++
 MPICXX=mpic++
 FLAGS+=-fsanitize=address -fno-omit-frame-pointer
+MPIFLAGS+=-fsanitize=address -fno-omit-frame-pointer
 else
 CXX=g++-13
 MPICXX=mpic++
