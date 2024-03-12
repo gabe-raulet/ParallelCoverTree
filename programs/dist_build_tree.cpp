@@ -10,7 +10,8 @@
 #include <stdint.h>
 #include <math.h>
 #include <mpi.h>
-#include "DistCoverTree.h"
+//#include "DistCoverTree.h"
+#include "CoverTree.h"
 #include "VectorIO.h"
 #include "read_args.h"
 

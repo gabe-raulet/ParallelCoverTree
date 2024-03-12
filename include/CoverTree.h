@@ -36,6 +36,8 @@ public:
 
     std::vector<std::vector<index_t>> get_level_set() const;
 
+    index_t num_leaves() const;
+
 private:
     double max_radius, base;
     std::unique_ptr<float[]> pointmem;

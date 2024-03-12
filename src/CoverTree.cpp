@@ -1,6 +1,7 @@
 #include "CoverTree.h"
 #include <algorithm>
 #include <unordered_set>
+#include <list>
 #include <iostream>
 #include <random>
 #include <tuple>
@@ -126,22 +127,32 @@ void CoverTree::build_tree()
 {
     set_max_radius();
 
-    std::vector<std::tuple<index_t, std::vector<index_t>>> stack;
-    stack.emplace_back(add_vertex(0, -1), std::vector<index_t>(npoints));
+    std::list<std::tuple<index_t, std::vector<index_t>>> queue;
+    queue.emplace_back(add_vertex(0, -1), std::vector<index_t>(npoints));
 
     for (index_t i = 0; i < npoints; ++i)
-        std::get<1>(stack.back())[i] = i;
+        std::get<1>(queue.back())[i] = i;
 
-    while (stack.size() != 0)
+    index_t cur_level = 0;
+
+    while (queue.size() != 0)
     {
-        index_t parent_id = std::get<0>(stack.back());
-        const auto& descendants = std::get<1>(stack.back());
+        index_t parent_id = std::get<0>(queue.front());
+        const auto& descendants = std::get<1>(queue.front());
         index_t n_descendants = descendants.size();
         assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
 
+        if (get_vertex_level(parent_id) != cur_level)
+        {
+            std::cout << "num_leaves = " << num_leaves() << std::endl;
+            print_info();
+            std::cout << std::endl;
+            cur_level++;
+        }
+
         if (n_descendants == 1)
         {
-            stack.pop_back();
+            queue.pop_front();
             continue;
         }
 
@@ -156,7 +167,7 @@ void CoverTree::build_tree()
             for (index_t duplicate_child_pt : descendants)
                 add_vertex(duplicate_child_pt, parent_id);
 
-            stack.pop_back();
+            queue.pop_front();
             continue;
         }
 
@@ -200,9 +211,8 @@ void CoverTree::build_tree()
             next_parents.emplace_back(next_point_id, next_descendants);
         }
 
-        stack.pop_back();
-        stack.reserve(stack.size() + next_parents.size());
-        std::copy(next_parents.begin(), next_parents.end(), std::back_inserter(stack));
+        queue.pop_front();
+        std::copy(next_parents.begin(), next_parents.end(), std::back_inserter(queue));
     }
 }
 
@@ -348,4 +358,15 @@ void CoverTree::write_to_file(const char *fname) const
     fwrite(level.data(), sizeof(index_t), n_vertices, f);
 
     fclose(f);
+}
+
+index_t CoverTree::num_leaves() const
+{
+    index_t l = 0;
+
+    for (index_t i = 0; i < num_vertices(); ++i)
+        if (children[i].size() == 0)
+            l++;
+
+    return l;
 }
