@@ -5,3 +5,8 @@
 *.swp
 create_data
 cluster_benchmark
+build_tree
+dist_build_tree
+build_epsilon_graph
+dist_build_epsilon_graph
+cluster_test
