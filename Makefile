@@ -22,6 +22,11 @@ INCLUDES=-I./include
 
 all: benchmark_nng benchmark_nng_bf dist_benchmark_nng_bf
 
+install: benchmark_nng benchmark_nng_bf dist_benchmark_nng_bf
+	cp benchmark_nng /global/homes/g/gabeh98/software/cover_tree
+	cp benchmark_nng_bf /global/homes/g/gabeh98/software/cover_tree
+	cp dist_benchmark_nng_bf /global/homes/g/gabeh98/software/cover_tree
+
 benchmark_nng: programs/benchmark_nng.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(CXX) -o benchmark_nng $(INCLUDES) $(FLAGS) programs/benchmark_nng.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
 
