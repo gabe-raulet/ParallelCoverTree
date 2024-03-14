@@ -49,8 +49,8 @@ build_tree: programs/build_tree.cpp src/CoverTree.cpp include/CoverTree.h src/Ve
 build_epsilon_graph: programs/build_epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(CXX) -o build_epsilon_graph $(INCLUDES) $(FLAGS) programs/build_epsilon_graph.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
 
-create_data: programs/create_data.cpp src/read_args.cpp include/read_args.h
-	$(CXX) -o create_data $(INCLUDES) $(FLAGS) programs/create_data.cpp src/read_args.cpp
+create_data: programs/create_data.cpp src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
+	$(CXX) -o create_data $(INCLUDES) $(FLAGS) programs/create_data.cpp src/VectorIO.cpp src/read_args.cpp
 
 clean:
 	rm -rf *.dSYM *.bin *.fvecs cluster_test build_tree build_epsilon_graph create_data

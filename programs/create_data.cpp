@@ -1,24 +1,25 @@
-#include <algorithm>
 #include <vector>
 #include <iostream>
+#include <string>
 #include <random>
-#include <tuple>
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 #include <math.h>
 #include <omp.h>
+#include "VectorIO.h"
 #include "read_args.h"
+
+std::string get_filename(char *fname);
 
 int main(int argc, char *argv[])
 {
     size_t n;
     int d = 2;
     int seed = -1;
-    double minval = -1.0;
-    double maxval = 1.0;
     int nthreads = 1;
-    char *filename = NULL;
+    double var = 1.;
 
     if (argc == 1 || find_arg_idx(argc, argv, "-h") >= 0)
     {
@@ -26,8 +27,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Options: -n INT    number of points [required]\n");
         fprintf(stderr, "         -o FILE   output filename [required]\n");
         fprintf(stderr, "         -d INT    point dimension [default: %d]\n", d);
-        fprintf(stderr, "         -L FLOAT  min element value [default: %.2f]\n", minval);
-        fprintf(stderr, "         -U FLOAT  max element value [default: %.2f]\n", maxval);
+        fprintf(stderr, "         -V FLOAT  rng variance [default: %.2f]\n", var);
         fprintf(stderr, "         -s INT    rng seed [default: random]\n");
         fprintf(stderr, "         -t INT    number of threads [default: %d]\n", nthreads);
         fprintf(stderr, "         -h        help message\n");
@@ -35,14 +35,13 @@ int main(int argc, char *argv[])
     }
 
     n = read_formatted_int_arg(argc, argv, "-n", NULL);
+    std::string fname = get_filename(read_string_arg(argc, argv, "-o", NULL));
     d = read_int_arg(argc, argv, "-d", &d);
-    minval = read_double_arg(argc, argv, "-L", &minval);
-    maxval = read_double_arg(argc, argv, "-U", &maxval);
     seed = read_int_arg(argc, argv, "-s", &seed);
-    filename = read_string_arg(argc, argv, "-o", NULL);
+    var = read_double_arg(argc, argv, "-V", &var);
     nthreads = std::min(read_int_arg(argc, argv, "-t", &nthreads), omp_get_max_threads());
 
-    assert(minval <= maxval);
+    fprintf(stderr, "Parameters: [n=%lld, d=%d, seed=%d, filename='%s', variance=%.2f, nthreads=%d]\n", n, d, seed, fname.c_str(), var, nthreads);
 
     double t = -omp_get_wtime();
 
@@ -56,10 +55,10 @@ int main(int argc, char *argv[])
 
     std::vector<float> pointmem(d*n);
 
-    #pragma omp parallel firstprivate(d, n, minval, maxval) num_threads(nthreads)
+    #pragma omp parallel firstprivate(d, n, var) num_threads(nthreads)
     {
         assert(nthreads == omp_get_num_threads());
-        std::uniform_real_distribution dis(minval, maxval);
+        std::normal_distribution dis{0.0, std::sqrt(var)};
         auto& gen = gens[omp_get_thread_num()];
 
         #pragma omp for
@@ -67,19 +66,26 @@ int main(int argc, char *argv[])
             pointmem[i] = dis(gen);
     }
 
-    const float *p = pointmem.data();
-    FILE *f = fopen(filename, "w");
-
-    for (size_t i = 0; i < n; ++i)
-    {
-        fwrite(&d, sizeof(int), 1, f);
-        fwrite(&p[i*d], sizeof(float), d, f);
-    }
-
-    fclose(f);
-
     t += omp_get_wtime();
-    fprintf(stderr, "Finished writing %lld points of dimension %d in %.4f seconds\n", n, d, t);
+    fprintf(stderr, "Generated %lld points of dimension %d in %.4f seconds\n", n, d, t);
+
+    t = -omp_get_wtime();
+    write_vecs_file(fname.c_str(), d, pointmem);
+    t += omp_get_wtime();
+
+    fprintf(stderr, "Wrote points to file '%s' in %.4f seconds\n", fname.c_str(), t);
 
     return 0;
+}
+
+std::string get_filename(char *fname)
+{
+    std::string filename(fname);
+    char *dot = strrchr(fname, '.');
+
+    if (dot && !strcmp(dot, ".fvecs"))
+        return filename;
+
+    filename += ".fvecs";
+    return filename;
 }
