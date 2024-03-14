@@ -20,13 +20,12 @@ endif
 
 INCLUDES=-I./include
 
-all: build_tree build_epsilon_graph dist_build_epsilon_graph create_data
+all: build_tree build_epsilon_graph create_data
 
-install: cluster_test build_tree build_epsilon_graph dist_build_epsilon_graph create_data
+install: cluster_test build_tree build_epsilon_graph create_data
 	cp cluster_test /global/homes/g/gabeh98/software/cover_tree
 	cp build_tree /global/homes/g/gabeh98/software/cover_tree
 	cp build_epsilon_graph /global/homes/g/gabeh98/software/cover_tree
-	cp dist_build_epsilon_graph /global/homes/g/gabeh98/software/cover_tree
 	cp create_data /global/homes/g/gabeh98/software/cover_tree
 
 test: cluster_test build_tree
@@ -50,11 +49,8 @@ build_tree: programs/build_tree.cpp src/CoverTree.cpp include/CoverTree.h src/Ve
 build_epsilon_graph: programs/build_epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(CXX) -o build_epsilon_graph $(INCLUDES) $(FLAGS) programs/build_epsilon_graph.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
 
-dist_build_epsilon_graph: programs/dist_build_epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
-	$(MPICXX) -o dist_build_epsilon_graph $(INCLUDES) $(MPIFLAGS) programs/dist_build_epsilon_graph.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
-
 create_data: programs/create_data.cpp src/read_args.cpp include/read_args.h
 	$(CXX) -o create_data $(INCLUDES) $(FLAGS) programs/create_data.cpp src/read_args.cpp
 
 clean:
-	rm -rf *.dSYM *.bin *.fvecs cluster_test build_tree build_epsilon_graph dist_build_epsilon_graph create_data
+	rm -rf *.dSYM *.bin *.fvecs cluster_test build_tree build_epsilon_graph create_data

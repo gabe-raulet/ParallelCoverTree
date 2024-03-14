@@ -4,4 +4,6 @@
 *.bin
 *.swp
 create_data
-cluster_benchmark
+build_tree
+build_epsilon_graph
+cluster_test
