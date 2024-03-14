@@ -20,7 +20,7 @@ endif
 
 INCLUDES=-I./include
 
-all: build_tree build_nng build_nng_bf benchmark_nng create_data
+all: build_tree build_nng build_nng_bf benchmark_nng benchmark_nng_bf create_data
 
 install: cluster_test build_tree build_nng build_nng_bf benchmark_nng create_data
 	cp cluster_test /global/homes/g/gabeh98/software/cover_tree
@@ -57,8 +57,11 @@ build_nng_bf: programs/build_nng_bf.cpp src/VectorIO.cpp include/VectorIO.h src/
 benchmark_nng: programs/benchmark_nng.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(CXX) -o benchmark_nng $(INCLUDES) $(FLAGS) programs/benchmark_nng.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
 
+benchmark_nng_bf: programs/benchmark_nng_bf.cpp src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
+	$(CXX) -o benchmark_nng_bf $(INCLUDES) $(FLAGS) programs/benchmark_nng_bf.cpp src/VectorIO.cpp src/read_args.cpp
+
 create_data: programs/create_data.cpp src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(CXX) -o create_data $(INCLUDES) $(FLAGS) programs/create_data.cpp src/VectorIO.cpp src/read_args.cpp
 
 clean:
-	rm -rf *.dSYM *.bin *.fvecs cluster_test build_tree build_nng build_nng_bf benchmark_nng create_data
+	rm -rf *.dSYM *.bin *.fvecs cluster_test build_tree build_nng build_nng_bf benchmark_nng benchmark_nng_bf create_data
