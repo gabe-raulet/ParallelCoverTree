@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     t += omp_get_wtime();
 
     fprintf(stderr, "Read cover tree from file '%s' in %.3f seconds\n", infname, t);
-    if (verbose) tree.print_info();
+    if (verbose) tree.print_info(stderr);
 
     index_t n = tree.num_points();
     const float *p = tree.getdata();

@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     assert(tree.is_nested());
     assert(tree.is_covering());
 
-    if (verbose) tree.print_info();
+    if (verbose) tree.print_info(stderr);
 
     t = -omp_get_wtime();
     tree.write_to_file(outfname);

@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     t += omp_get_wtime();
 
     if (verbose) fprintf(stderr, "Read cover tree from file '%s' in %.3f seconds\n", infname, t);
-    if (verbose) tree.print_info();
+    if (verbose) tree.print_info(stderr);
 
     auto clusters = get_clusters(tree, tree.getdata(), tree.num_points(), tree.getdim(), epsilon);
 

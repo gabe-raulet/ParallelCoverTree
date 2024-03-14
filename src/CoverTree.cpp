@@ -29,10 +29,10 @@ CoverTree::CoverTree(const float *p, index_t n, int d, double base)
 
 bool CoverTree::is_full() const
 {
-    std::vector<bool> bits(num_points(), false);
+    std::vector<bool> bits(npoints, false);
 
     for (size_t i = 0; i < num_vertices(); ++i)
-        bits[get_point_id(i)] = true;
+        bits[pt[i]] = true;
 
     return std::all_of(bits.begin(), bits.end(), [](bool item) { return item == true; });
 }
@@ -48,7 +48,7 @@ bool CoverTree::is_nested() const
     while (stack.size() != 0)
     {
         u = stack.back(); stack.pop_back();
-        mychildren = get_child_ids(u);
+        mychildren = children[u];
 
         found = false;
 
@@ -56,7 +56,7 @@ bool CoverTree::is_nested() const
         {
             stack.push_back(v);
 
-            if (get_point_id(u) == get_point_id(v))
+            if (pt[u] == pt[v])
             {
                 if (found) return false;
                 found = true;
@@ -78,13 +78,13 @@ bool CoverTree::is_covering() const
     while (stack.size() != 0)
     {
         u = stack.back(); stack.pop_back();
-        mychildren = get_child_ids(u);
+        mychildren = children[u];
         ball_radius = vertex_ball_radius(u);
 
         for (index_t v : mychildren)
         {
             stack.push_back(v);
-            d = point_dist(get_point_id(u), get_point_id(v));
+            d = point_dist(pt[u], pt[v]);
 
             if (d > ball_radius)
                 return false;
@@ -105,17 +105,17 @@ std::vector<index_t> CoverTree::radii_query(const float *query, double radius) c
     while (stack.size() != 0)
     {
         u = stack.back(); stack.pop_back();
-        mychildren = get_child_ids(u);
+        mychildren = children[u];
 
         for (index_t v : mychildren)
         {
-            const float *p = &pointmem[get_point_id(v)*d];
+            const float *p = &pointmem[pt[v]*d];
 
             if (distance(query, p, d) <= radius + max_radius*vertex_ball_radius(v))
                 stack.push_back(v);
 
             if (distance(query, p, d) <= radius)
-                idset.insert(get_point_id(v));
+                idset.insert(pt[v]);
         }
     }
 
@@ -137,7 +137,7 @@ void CoverTree::build_tree()
         index_t parent_id = std::get<0>(stack.back());
         const auto& descendants = std::get<1>(stack.back());
         index_t n_descendants = descendants.size();
-        assert(n_descendants >= 1 && get_point_id(parent_id) == descendants[0]);
+        assert(n_descendants >= 1 && pt[parent_id] == descendants[0]);
 
         if (n_descendants == 1)
         {
@@ -160,7 +160,7 @@ void CoverTree::build_tree()
             continue;
         }
 
-        std::vector<index_t> child_descendants = {get_point_id(parent_id)};
+        std::vector<index_t> child_descendants = {pt[parent_id]};
         double parent_ball_radius = vertex_ball_radius(parent_id);
 
         for (index_t k = 0; k < n_descendants; ++k)
@@ -216,7 +216,7 @@ index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
 
     if (parent_id >= 0)
     {
-        vertex_level = get_vertex_level(parent_id) + 1;
+        vertex_level = level[parent_id] + 1;
         children[parent_id].push_back(vertex_id);
     }
     else
@@ -225,8 +225,6 @@ index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
     }
 
     level.push_back(vertex_level);
-    levelset.resize(std::max(vertex_level+1, static_cast<index_t>(levelset.size())));
-    levelset[vertex_level].push_back(vertex_id);
 
     return vertex_id;
 }
@@ -248,31 +246,45 @@ double CoverTree::point_dist(index_t id1, index_t id2) const
 
 double CoverTree::vertex_ball_radius(index_t vertex_id) const
 {
-    return std::pow(base, -1. * get_vertex_level(vertex_id));
+    return std::pow(base, -1. * level[vertex_id]);
 }
 
-void CoverTree::print_info() const
+std::vector<std::vector<index_t>> CoverTree::get_level_set() const
 {
-    std::cout << "* number of points: " << num_points() << "\n";
-    std::cout << "* dimension: " << getdim() << "\n";
-    std::cout << "* number of vertices: " << num_vertices() << "\n";
-    std::cout << "* number of levels: " << num_levels() << "\n\n";
+    index_t num_levels = std::accumulate(level.begin(), level.end(), static_cast<index_t>(0), [](auto a, auto b) { return std::max(a,b); }) + 1;
+    std::vector<std::vector<index_t>> level_set(num_levels);
 
-    for (int64_t i = 0; i < num_levels(); ++i)
+    for (index_t i = 0; i < pt.size(); ++i)
+        level_set[level[i]].push_back(i);
+
+    return level_set;
+}
+
+void CoverTree::print_info(FILE *f) const
+{
+    const auto& level_set = get_level_set();
+    index_t num_levels = level_set.size();
+
+    fprintf(f, "* number of points: %lld\n", npoints);
+    fprintf(f, "* dimension: %d\n", d);
+    fprintf(f, "* number of vertices: %lld\n", pt.size());
+    fprintf(f, "* number of levels: %lld\n\n", num_levels);
+
+    for (index_t i = 0; i < num_levels; ++i)
     {
         double average_vertex_degree = 0;
 
-        for (const auto& v : levelset[i])
+        for (const auto& v : level_set[i])
         {
             average_vertex_degree += children[v].size();
         }
 
-        average_vertex_degree /= levelset[i].size();
-        printf("level %ld has %lld vertices of average degree %.3f\n", i, levelset[i].size(), average_vertex_degree);
+        average_vertex_degree /= level_set[i].size();
+        fprintf(f, "level %ld has %lld vertices of average degree %.3f\n", i, level_set[i].size(), average_vertex_degree);
     }
 
-    std::cout << std::endl;
-
+    fprintf(f, "\n");
+    fflush(f);
 }
 
 void CoverTree::read_from_file(const char *fname)
@@ -302,14 +314,9 @@ void CoverTree::read_from_file(const char *fname)
     index_t num_levels = std::accumulate(level.begin(), level.end(), static_cast<index_t>(0), [](auto a, auto b) { return std::max(a,b); }) + 1;
 
     children.resize(n_vertices);
-    levelset.resize(num_levels);
-    levelset[level[0]].push_back(0);
 
     for (index_t v = 1; v < n_vertices; ++v)
-    {
         children[parent[v]].push_back(v);
-        levelset[level[v]].push_back(v);
-    }
 
     fclose(f);
 }

@@ -2,6 +2,7 @@
 #define COVER_TREE_H_
 
 #include <stdint.h>
+#include <stdio.h>
 #include <math.h>
 #include <vector>
 #include <memory>
@@ -14,21 +15,17 @@ public:
     CoverTree() : max_radius(0), base(2), pointmem(NULL), npoints(0), d(0) {}
     CoverTree(const float *p, index_t n, int d, double base = 2.);
 
-    index_t num_vertices() const { return pt.size(); }
     index_t num_points() const { return npoints; }
-    index_t num_levels() const { return levelset.size(); }
+    index_t num_vertices() const { return pt.size(); }
     int getdim() const { return d; }
     const float* getdata() const { return pointmem.get(); }
 
-    index_t get_point_id(index_t vertex_id) const { return pt[vertex_id]; }
-    index_t get_vertex_level(index_t vertex_id) const { return level[vertex_id]; }
-    std::vector<index_t> get_child_ids(index_t parent_id) const { return children[parent_id]; }
     std::vector<index_t> radii_query(const float *query, double radius) const;
 
     bool is_full() const;
     bool is_nested() const;
     bool is_covering() const;
-    void print_info() const;
+    void print_info(FILE *f) const;
 
     void write_to_file(const char *fname) const;
     void read_from_file(const char *fname);
@@ -42,7 +39,6 @@ private:
     std::vector<index_t> pt;
     std::vector<index_t> level;
     std::vector<std::vector<index_t>> children;
-    std::vector<std::vector<index_t>> levelset;
 
     void build_tree();
     void set_max_radius();
@@ -50,6 +46,8 @@ private:
 
     double point_dist(index_t id1, index_t id2) const;
     double vertex_ball_radius(index_t vertex_id) const;
+
+    std::vector<std::vector<index_t>> get_level_set() const;
 };
 
 #endif
