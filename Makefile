@@ -20,21 +20,13 @@ endif
 
 INCLUDES=-I./include
 
-all: benchmark_nng benchmark_nng_bf dist_benchmark_nng_bf
+all: dist_benchmark_nng
 
-install: benchmark_nng benchmark_nng_bf dist_benchmark_nng_bf
-	cp benchmark_nng /global/homes/g/gabeh98/software/cover_tree
-	cp benchmark_nng_bf /global/homes/g/gabeh98/software/cover_tree
-	cp dist_benchmark_nng_bf /global/homes/g/gabeh98/software/cover_tree
+install: dist_benchmark_nng
+	cp dist_benchmark_nng /global/homes/g/gabeh98/software/cover_tree
 
-benchmark_nng: programs/benchmark_nng.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
-	$(CXX) -o benchmark_nng $(INCLUDES) $(FLAGS) programs/benchmark_nng.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
-
-benchmark_nng_bf: programs/benchmark_nng_bf.cpp src/read_args.cpp include/read_args.h
-	$(CXX) -o benchmark_nng_bf $(INCLUDES) $(FLAGS) programs/benchmark_nng_bf.cpp src/read_args.cpp
-
-dist_benchmark_nng_bf: programs/dist_benchmark_nng_bf.cpp src/read_args.cpp include/read_args.h
-	$(MPICXX) -o dist_benchmark_nng_bf $(INCLUDES) $(MPIFLAGS) programs/dist_benchmark_nng_bf.cpp src/read_args.cpp
+dist_benchmark_nng: programs/dist_benchmark_nng.cpp src/CoverTree.cpp include/CoverTree.h src/read_args.cpp include/read_args.h
+	$(MPICXX) -o dist_benchmark_nng $(INCLUDES) $(MPIFLAGS) programs/dist_benchmark_nng.cpp src/CoverTree.cpp src/read_args.cpp
 
 clean:
-	rm -rf *.dSYM *.bin *.fvecs benchmark_nng benchmark_nng_bf dist_benchmark_nng_bf
+	rm -rf *.dSYM *.bin *.fvecs dist_benchmark_nng

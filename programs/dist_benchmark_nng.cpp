@@ -10,11 +10,13 @@
 #include <stdint.h>
 #include <math.h>
 #include <mpi.h>
+#include "CoverTree.h"
 #include "read_args.h"
 
-double distance(const float *p, const float *q, int d);
+extern double distance(const float *p, const float *q, int d);
 std::vector<float> generate_points(int64_t n, int d, double var, int seed, MPI_Comm comm);
 std::vector<std::vector<int64_t>> build_nng_bf(const std::vector<float>& pointmem, int dim, double radius, int64_t *n_edges, MPI_Comm comm);
+std::vector<std::vector<int64_t>> build_nng_tree(const CoverTree& tree, double radius, int64_t *n_edges, MPI_Comm comm);
 void write_degrees_to_file(const char *fname, std::vector<std::vector<int64_t>>& graph, MPI_Comm comm);
 
 int main(int argc, char *argv[])
@@ -24,6 +26,7 @@ int main(int argc, char *argv[])
     double radius;
     double var;
     int seed = -1;
+    int bf = 0;
     char *outfname = NULL;
 
     int myrank, nprocs;
@@ -42,6 +45,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "            -r FLOAT  epsilon radius\n");
             fprintf(stderr, "            -o FILE   graph degrees file [optional]\n");
             fprintf(stderr, "            -s INT    rng seed [default: random]\n");
+            fprintf(stderr, "            -B        use brute force algorithm\n");
             fprintf(stderr, "            -h        help message\n");
         }
 
@@ -54,6 +58,7 @@ int main(int argc, char *argv[])
     radius = read_double_arg(argc, argv, "-r", NULL);
     var = read_double_arg(argc, argv, "-V", NULL);
     seed = read_int_arg(argc, argv, "-s", &seed);
+    bf = !!(find_arg_idx(argc, argv, "-B") >= 0);
 
     if (find_arg_idx(argc, argv, "-o") >= 0)
     {
@@ -74,19 +79,52 @@ int main(int argc, char *argv[])
     if (myrank == 0) fprintf(stderr, "(generate_points) :: [n_points=%lld,dim=%d,var=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, dim, var, maxtime, proctime/nprocs);
 
     int64_t m, n_edges;
+    std::vector<std::vector<int64_t>> local_dist_graph;
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    t = -MPI_Wtime();
+    if (bf)
+    {
+        MPI_Barrier(MPI_COMM_WORLD);
+        t = -MPI_Wtime();
 
-    auto local_dist_graph = build_nng_bf(pointmem, dim, radius, &m, MPI_COMM_WORLD);
+        local_dist_graph = build_nng_bf(pointmem, dim, radius, &m, MPI_COMM_WORLD);
 
-    MPI_Reduce(&m, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&m, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    t += MPI_Wtime();
-    MPI_Reduce(&t, &maxtime,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&t, &proctime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        t += MPI_Wtime();
+        MPI_Reduce(&t, &maxtime,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&t, &proctime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if (myrank == 0) fprintf(stderr, "(build_nng_bf) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, maxtime, proctime/nprocs);
+        if (myrank == 0) fprintf(stderr, "(build_nng_bf) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, maxtime, proctime/nprocs);
+    }
+    else
+    {
+        MPI_Barrier(MPI_COMM_WORLD);
+        t = -MPI_Wtime();
+
+        const float *p = pointmem.data();
+        double base = 2.;
+
+        CoverTree tree(p, npoints, dim, base);
+
+        t += MPI_Wtime();
+        MPI_Reduce(&t, &maxtime,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&t, &proctime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        if (myrank == 0) fprintf(stderr, "(build_cover_tree) :: [n_verts=%lld,base=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", tree.num_vertices(), base, maxtime, proctime/nprocs);
+
+        MPI_Barrier(MPI_COMM_WORLD);
+        t = -MPI_Wtime();
+
+        local_dist_graph = build_nng_tree(tree, radius, &m, MPI_COMM_WORLD);
+
+        MPI_Reduce(&m, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        t += MPI_Wtime();
+        MPI_Reduce(&t, &maxtime,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&t, &proctime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        if (myrank == 0) fprintf(stderr, "(build_nng_tree) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, maxtime, proctime/nprocs);
+    }
 
     if (outfname)
     {
@@ -158,17 +196,32 @@ std::vector<std::vector<int64_t>> build_nng_bf(const std::vector<float>& pointme
     return std::move(graph);
 }
 
-double distance(const float *p, const float *q, int d)
+std::vector<std::vector<int64_t>> build_nng_tree(const CoverTree& tree, double radius, int64_t *n_edges, MPI_Comm comm)
 {
-    double sum = 0.0, di;
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
 
-    for (int i = 0; i < d; ++i)
+    int64_t m = 0;
+    int64_t n = tree.num_points();
+    const float *p = tree.getdata();
+    int d = tree.getdim();
+
+    int64_t chunksize = n / nprocs;
+    int64_t start = myrank * chunksize;
+    int64_t stop = std::min(start + chunksize, n);
+    int64_t mychunksize = stop - start;
+
+    std::vector<std::vector<int64_t>> graph(mychunksize);
+
+    for (int64_t i = start; i < stop; ++i)
     {
-        di = p[i] - q[i];
-        sum += di*di;
+        graph[i-start] = tree.radii_query(&p[d*i], radius);
+        m += graph[i-start].size();
     }
 
-    return std::sqrt(sum);
+    *n_edges = m;
+    return graph;
 }
 
 void write_degrees_to_file(const char *fname, std::vector<std::vector<int64_t>>& graph, MPI_Comm comm)
@@ -195,7 +248,7 @@ void write_degrees_to_file(const char *fname, std::vector<std::vector<int64_t>>&
     if (myrank == 0)
     {
         displs.resize(nprocs);
-        displs[0] = 0;
+        displs.front() = 0;
         std::partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
         degrees.resize(displs.back() + recvcounts.back());
     }
