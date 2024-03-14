@@ -8,3 +8,4 @@ build_tree
 build_nng
 build_nng_bf
 cluster_test
+benchmark_nng
