@@ -10,3 +10,4 @@ build_nng_bf
 cluster_test
 benchmark_nng
 benchmark_nng_bf
+dist_benchmark_nng_bf
