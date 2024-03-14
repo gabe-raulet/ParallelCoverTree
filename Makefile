@@ -20,12 +20,13 @@ endif
 
 INCLUDES=-I./include
 
-all: build_tree build_epsilon_graph create_data
+all: build_tree build_nng build_nng_bf create_data
 
-install: cluster_test build_tree build_epsilon_graph create_data
+install: cluster_test build_tree build_nng build_nng_bf create_data
 	cp cluster_test /global/homes/g/gabeh98/software/cover_tree
 	cp build_tree /global/homes/g/gabeh98/software/cover_tree
-	cp build_epsilon_graph /global/homes/g/gabeh98/software/cover_tree
+	cp build_nng /global/homes/g/gabeh98/software/cover_tree
+	cp build_nng_bf /global/homes/g/gabeh98/software/cover_tree
 	cp create_data /global/homes/g/gabeh98/software/cover_tree
 
 test: cluster_test build_tree
@@ -46,11 +47,14 @@ cluster_test: programs/cluster_test.cpp src/CoverTree.cpp include/CoverTree.h sr
 build_tree: programs/build_tree.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(CXX) -o build_tree $(INCLUDES) $(FLAGS) programs/build_tree.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
 
-build_epsilon_graph: programs/build_epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
-	$(CXX) -o build_epsilon_graph $(INCLUDES) $(FLAGS) programs/build_epsilon_graph.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
+build_nng: programs/build_nng.cpp src/CoverTree.cpp include/CoverTree.h src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
+	$(CXX) -o build_nng $(INCLUDES) $(FLAGS) programs/build_nng.cpp src/CoverTree.cpp src/VectorIO.cpp src/read_args.cpp
+
+build_nng_bf: programs/build_nng_bf.cpp src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
+	$(CXX) -o build_nng_bf $(INCLUDES) $(FLAGS) programs/build_nng_bf.cpp src/VectorIO.cpp src/read_args.cpp
 
 create_data: programs/create_data.cpp src/VectorIO.cpp include/VectorIO.h src/read_args.cpp include/read_args.h
 	$(CXX) -o create_data $(INCLUDES) $(FLAGS) programs/create_data.cpp src/VectorIO.cpp src/read_args.cpp
 
 clean:
-	rm -rf *.dSYM *.bin *.fvecs cluster_test build_tree build_epsilon_graph create_data
+	rm -rf *.dSYM *.bin *.fvecs cluster_test build_tree build_nng build_nng_bf create_data

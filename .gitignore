@@ -5,5 +5,6 @@
 *.swp
 create_data
 build_tree
-build_epsilon_graph
+build_nng
+build_nng_bf
 cluster_test
