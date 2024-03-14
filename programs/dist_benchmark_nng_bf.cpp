@@ -15,6 +15,7 @@
 double distance(const float *p, const float *q, int d);
 std::vector<float> generate_points(int64_t n, int d, double var, int seed, MPI_Comm comm);
 std::vector<std::vector<int64_t>> build_nng_bf(const std::vector<float>& pointmem, int dim, double radius, int64_t *n_edges, MPI_Comm comm);
+void write_degrees_to_file(const char *fname, std::vector<std::vector<int64_t>>& graph, MPI_Comm comm);
 
 int main(int argc, char *argv[])
 {
@@ -87,6 +88,20 @@ int main(int argc, char *argv[])
 
     if (myrank == 0) fprintf(stderr, "(build_nng_bf) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, maxtime, proctime/nprocs);
 
+    if (outfname)
+    {
+        MPI_Barrier(MPI_COMM_WORLD);
+        t = -MPI_Wtime();
+
+        write_degrees_to_file(outfname, local_dist_graph, MPI_COMM_WORLD);
+
+        t += MPI_Wtime();
+        MPI_Reduce(&t, &maxtime,  1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&t, &proctime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        if (myrank == 0) fprintf(stderr, "(write_degrees_to_file) :: [outfname='%s'] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", outfname, maxtime, proctime/nprocs);
+    }
+
     MPI_Finalize();
     return 0;
 }
@@ -154,4 +169,43 @@ double distance(const float *p, const float *q, int d)
     }
 
     return std::sqrt(sum);
+}
+
+void write_degrees_to_file(const char *fname, std::vector<std::vector<int64_t>>& graph, MPI_Comm comm)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    int64_t my_n = graph.size();
+    std::vector<int64_t> mydegrees(my_n);
+
+    for (int64_t i = 0; i < my_n; ++i)
+        mydegrees[i] = graph[i].size();
+
+    std::vector<int> recvcounts, displs;
+
+    if (myrank == 0) recvcounts.resize(nprocs);
+
+    int sendcount = my_n;
+    MPI_Gather(&sendcount, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, 0, comm);
+
+    std::vector<int64_t> degrees;
+
+    if (myrank == 0)
+    {
+        displs.resize(nprocs);
+        displs[0] = 0;
+        std::partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+        degrees.resize(displs.back() + recvcounts.back());
+    }
+
+    MPI_Gatherv(mydegrees.data(), sendcount, MPI_INT64_T, degrees.data(), recvcounts.data(), displs.data(), MPI_INT64_T, 0, comm);
+
+    if (myrank == 0)
+    {
+        FILE *f = fopen(fname, "w");
+        for (auto d : degrees) fprintf(f, "%lld\n", d);
+        fclose(f);
+    }
 }
