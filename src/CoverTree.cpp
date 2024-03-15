@@ -192,10 +192,11 @@ void CoverTree::build_tree()
     set_max_radius();
 
     std::list<std::tuple<index_t, std::vector<index_t>>> queue;
-    queue.emplace_back(add_vertex(0, -1), std::vector<index_t>(npoints));
 
-    for (index_t i = 0; i < npoints; ++i)
-        std::get<1>(queue.back())[i] = i;
+    index_t root_id = add_vertex(0, -1);
+    std::vector<index_t> root_descendants(npoints);
+    std::iota(root_descendants.begin(), root_descendants.end(), 0);
+    queue.emplace_back(root_id, root_descendants);
 
     while (queue.size() != 0)
     {
