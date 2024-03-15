@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
     if (myrank == 0)
     {
         std::string curtime = return_current_time_and_date();
-        fprintf(stderr, "Running %s at %s\n", argv[0], curtime.c_str());
+        printf("Running %s at %s\n", argv[0], curtime.c_str());
     }
 
     MPITimer timer(MPI_COMM_WORLD, 0);
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     auto pointmem = generate_points(npoints, dim, var, seed, MPI_COMM_WORLD);
     timer.stop_timer();
 
-    if (myrank == timer.root) fprintf(stderr, "(generate_points) :: [n_points=%lld,dim=%d,var=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, dim, var, timer.maxtime, timer.proctime/nprocs);
+    if (myrank == timer.root) printf("(generate_points) :: [n_points=%lld,dim=%d,var=%.2f,seed=%d] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, dim, var, seed, timer.maxtime, timer.proctime/nprocs);
 
     int64_t m, n_edges;
     std::vector<std::vector<int64_t>> local_dist_graph;
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
         MPI_Reduce(&m, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
         timer.stop_timer();
 
-        if (myrank == timer.root) fprintf(stderr, "(build_nng_bf) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, timer.maxtime, timer.proctime/nprocs);
+        if (myrank == timer.root) printf("(build_nng_bf) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, timer.maxtime, timer.proctime/nprocs);
     }
     else
     {
@@ -116,14 +116,14 @@ int main(int argc, char *argv[])
         CoverTree tree(p, npoints, dim, base);
         timer.stop_timer();
 
-        if (myrank == timer.root) fprintf(stderr, "(build_cover_tree) :: [n_verts=%lld,base=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", tree.num_vertices(), base, timer.maxtime, timer.proctime/nprocs);
+        if (myrank == timer.root) printf("(build_cover_tree) :: [n_verts=%lld,base=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", tree.num_vertices(), base, timer.maxtime, timer.proctime/nprocs);
 
         timer.start_timer();
         local_dist_graph = build_nng_tree(tree, radius, &m, MPI_COMM_WORLD);
         MPI_Reduce(&m, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
         timer.stop_timer();
 
-        if (myrank == timer.root) fprintf(stderr, "(build_nng_tree) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, timer.maxtime, timer.proctime/nprocs);
+        if (myrank == timer.root) printf("(build_nng_tree) :: [n_verts=%lld,n_edges=%lld,avg_deg=%.2f,radius=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", npoints, n_edges, (n_edges+0.0)/npoints, radius, timer.maxtime, timer.proctime/nprocs);
     }
 
     if (outfname)
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
         write_degrees_to_file(outfname, local_dist_graph, MPI_COMM_WORLD);
         timer.stop_timer();
 
-        if (myrank == timer.root) fprintf(stderr, "(write_degrees_to_file) :: [outfname='%s'] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", outfname, timer.maxtime, timer.proctime/nprocs);
+        if (myrank == timer.root) printf("(write_degrees_to_file) :: [outfname='%s'] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", outfname, timer.maxtime, timer.proctime/nprocs);
     }
 
     MPI_Finalize();
