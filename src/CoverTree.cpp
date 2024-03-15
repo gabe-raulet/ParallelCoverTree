@@ -231,18 +231,7 @@ void CoverTree::build_tree()
         {
             std::sort(descendant_counts[cur_level].begin(), descendant_counts[cur_level].end(), std::greater<>());
             auto partitions = greedy_partitioning(descendant_counts[cur_level], 8);
-
-            for (int i = 0; i < 8; ++i)
-            {
-                int total = std::accumulate(partitions[i].begin(), partitions[i].end(), 0, std::plus<int>());
-                printf("proc[%d] has %d total: ", i, total);
-                std::copy(partitions[i].begin(), partitions[i].end(), std::ostream_iterator<int>(std::cout, " "));
-                std::cout << std::endl;
-            }
-
-            //std::copy(descendant_counts[cur_level].begin(), descendant_counts[cur_level].end(), std::ostream_iterator<index_t>(std::cout, " "));
             cur_level = level[parent_id];
-            std::cout << std::endl;
         }
 
         queue.pop_front();
@@ -259,33 +248,6 @@ void CoverTree::build_tree()
             queue.emplace_back(next_vertex_id, next_descendants);
         }
     }
-
-    //print_info(stderr);
-    //std::cerr << std::endl;
-
-    //auto level_set = get_level_set();
-    //std::vector<index_t> num_leaves;
-
-    //for (index_t l = 0; l < descendant_counts.size(); ++l)
-    //{
-        //index_t c = 0;
-
-        //for (auto v : level_set[l])
-        //{
-            //if (children[v].size() == 0)
-                //c++;
-        //}
-
-        //num_leaves.push_back(c);
-    //}
-
-    //for (index_t l = 0; l < descendant_counts.size(); ++l)
-    //{
-        //index_t total = std::accumulate(descendant_counts[l].begin(), descendant_counts[l].end(), static_cast<index_t>(0), [](auto a, auto b) { return a + b; });
-        //std::cerr << "level=" << l << " :: total=" << total << " :: leaves=" << num_leaves[l] << " :: ";
-        //std::copy(descendant_counts[l].begin(), descendant_counts[l].end(), std::ostream_iterator<index_t>(std::cerr, " "));
-        //std::cerr << std::endl;
-    //}
 }
 
 index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
