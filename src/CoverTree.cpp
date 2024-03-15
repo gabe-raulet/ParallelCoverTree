@@ -280,7 +280,7 @@ void CoverTree::print_info(FILE *f) const
 
     fprintf(f, "* number of points: %lld\n", npoints);
     fprintf(f, "* dimension: %d\n", d);
-    fprintf(f, "* number of vertices: %lld\n", pt.size());
+    fprintf(f, "* number of vertices: %lu\n", pt.size());
     fprintf(f, "* number of levels: %lld\n\n", num_levels);
 
     for (index_t i = 0; i < num_levels; ++i)
@@ -293,7 +293,7 @@ void CoverTree::print_info(FILE *f) const
         }
 
         average_vertex_degree /= level_set[i].size();
-        fprintf(f, "level %ld has %lld vertices of average degree %.3f\n", i, level_set[i].size(), average_vertex_degree);
+        fprintf(f, "level %lld has %lu vertices of average degree %.3f\n", i, level_set[i].size(), average_vertex_degree);
     }
 
     fprintf(f, "\n");
