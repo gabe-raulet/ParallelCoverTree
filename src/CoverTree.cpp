@@ -2,6 +2,7 @@
 #include <list>
 #include <algorithm>
 #include <unordered_set>
+#include <iterator>
 #include <iostream>
 #include <random>
 #include <tuple>
@@ -21,9 +22,25 @@ double distance(const float *p, const float *q, int d)
     return std::sqrt(sum);
 }
 
+std::vector<std::vector<index_t>> greedy_partitioning(const std::vector<index_t>& tasks, int nprocs)
+{
+    size_t num_tasks = tasks.size();
+    std::vector<index_t> loads(nprocs, 0);
+    std::vector<std::vector<index_t>> partitions(nprocs);
+
+    for (index_t i = 0; i < num_tasks; ++i)
+    {
+        int proc = std::distance(loads.begin(), std::min_element(loads.begin(), loads.end()));
+        loads[proc] += tasks[proc];
+        partitions[proc].push_back(i);
+    }
+
+    return partitions;
+}
+
 CoverTree::CoverTree(const float *p, index_t n, int d, double base)
     : base(base), pointmem(new float[d*n]), npoints(n), d(d)
-{ 
+{
     std::copy(p, p + n*d, pointmem.get());
     build_tree();
 }
@@ -198,11 +215,16 @@ void CoverTree::build_tree()
     std::iota(root_descendants.begin(), root_descendants.end(), 0);
     queue.emplace_back(root_id, root_descendants);
 
+    std::vector<std::vector<index_t>> descendant_counts;
+
     while (queue.size() != 0)
     {
         index_t parent_id = std::get<0>(queue.front());
         const auto& descendants = std::get<1>(queue.front());
         const auto& child_info = compute_child_points(parent_id, descendants);
+
+        descendant_counts.resize(level[parent_id]+1);
+        descendant_counts[level[parent_id]].push_back(descendants.size());
 
         queue.pop_front();
 
@@ -217,6 +239,33 @@ void CoverTree::build_tree()
             index_t next_vertex_id = add_vertex(child_pt, parent_id);
             queue.emplace_back(next_vertex_id, next_descendants);
         }
+    }
+
+    print_info(stderr);
+    std::cerr << std::endl;
+
+    auto level_set = get_level_set();
+    std::vector<index_t> num_leaves;
+
+    for (index_t l = 0; l < descendant_counts.size(); ++l)
+    {
+        index_t c = 0;
+
+        for (auto v : level_set[l])
+        {
+            if (children[v].size() == 0)
+                c++;
+        }
+
+        num_leaves.push_back(c);
+    }
+
+    for (index_t l = 0; l < descendant_counts.size(); ++l)
+    {
+        index_t total = std::accumulate(descendant_counts[l].begin(), descendant_counts[l].end(), static_cast<index_t>(0), [](auto a, auto b) { return a + b; });
+        std::cerr << "level=" << l << " :: total=" << total << " :: leaves=" << num_leaves[l] << " :: ";
+        std::copy(descendant_counts[l].begin(), descendant_counts[l].end(), std::ostream_iterator<index_t>(std::cerr, " "));
+        std::cerr << std::endl;
     }
 }
 
