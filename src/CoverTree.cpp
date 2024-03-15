@@ -1,4 +1,5 @@
 #include "CoverTree.h"
+#include <list>
 #include <algorithm>
 #include <unordered_set>
 #include <iostream>
@@ -122,87 +123,99 @@ std::vector<index_t> CoverTree::radii_query(const float *query, double radius) c
     return std::vector<index_t>(idset.begin(), idset.end());
 }
 
+std::vector<std::tuple<index_t, std::vector<index_t>>>
+CoverTree::compute_child_points(index_t parent_id, const std::vector<index_t>& descendants) const
+{
+    std::vector<std::tuple<index_t, std::vector<index_t>>> child_info;
+    index_t n_descendants = descendants.size();
+    assert(n_descendants >= 1 && pt[parent_id] == descendants[0]);
+
+    if (n_descendants == 1) return child_info;
+
+    std::vector<double> dists(n_descendants);
+    std::vector<index_t> closest(n_descendants, descendants[0]);
+
+    auto it = descendants.begin();
+    std::generate(dists.begin(), dists.end(), [&]() { return point_dist(descendants[0], *it++); });
+
+    if (std::all_of(dists.begin(), dists.end(), [](double d) { return d == 0; }))
+    {
+        for (index_t duplicate_child_pt : descendants)
+        {
+            child_info.emplace_back(duplicate_child_pt, std::vector<index_t>());
+        }
+        return child_info;
+    }
+
+    std::vector<index_t> child_descendants = {pt[parent_id]};
+    double parent_ball_radius = vertex_ball_radius(parent_id);
+
+    for (index_t k = 0; k < n_descendants; ++k)
+    {
+        index_t farthest = std::distance(dists.begin(), std::max_element(dists.begin(), dists.end()));
+
+        if (dists[farthest] <= (parent_ball_radius / base))
+            break;
+
+        index_t next_child_id = descendants[farthest];
+        child_descendants.push_back(next_child_id);
+
+        for (index_t j = 0; j < n_descendants; ++j)
+        {
+            double lastdist = dists[j];
+            double curdist = point_dist(descendants[j], next_child_id);
+
+            if (curdist <= lastdist)
+            {
+                dists[j] = curdist;
+                closest[j] = next_child_id;
+            }
+        }
+    }
+
+    for (index_t child_pt : child_descendants)
+    {
+        std::vector<index_t> next_descendants = {child_pt};
+
+        for (index_t j = 0; j < n_descendants; ++j)
+            if (closest[j] == child_pt && descendants[j] != child_pt)
+                next_descendants.push_back(descendants[j]);
+
+        child_info.emplace_back(child_pt, next_descendants);
+    }
+
+    return child_info;
+}
+
 void CoverTree::build_tree()
 {
     set_max_radius();
 
-    std::vector<std::tuple<index_t, std::vector<index_t>>> stack;
-    stack.emplace_back(add_vertex(0, -1), std::vector<index_t>(npoints));
+    std::list<std::tuple<index_t, std::vector<index_t>>> queue;
+    queue.emplace_back(add_vertex(0, -1), std::vector<index_t>(npoints));
 
     for (index_t i = 0; i < npoints; ++i)
-        std::get<1>(stack.back())[i] = i;
+        std::get<1>(queue.back())[i] = i;
 
-    while (stack.size() != 0)
+    while (queue.size() != 0)
     {
-        index_t parent_id = std::get<0>(stack.back());
-        const auto& descendants = std::get<1>(stack.back());
-        index_t n_descendants = descendants.size();
-        assert(n_descendants >= 1 && pt[parent_id] == descendants[0]);
+        index_t parent_id = std::get<0>(queue.front());
+        const auto& descendants = std::get<1>(queue.front());
+        const auto& child_info = compute_child_points(parent_id, descendants);
 
-        if (n_descendants == 1)
+        queue.pop_front();
+
+        for (const auto& item : child_info)
         {
-            stack.pop_back();
-            continue;
+            const auto& child_pt = std::get<0>(item);
+            const auto& next_descendants = std::get<1>(item);
+
+            if (next_descendants.size() == 0)
+                continue;
+
+            index_t next_vertex_id = add_vertex(child_pt, parent_id);
+            queue.emplace_back(next_vertex_id, next_descendants);
         }
-
-        std::vector<double> dists(n_descendants);
-        std::vector<index_t> closest(n_descendants, descendants[0]);
-
-        auto it = descendants.begin();
-        std::generate(dists.begin(), dists.end(), [&]() { return point_dist(descendants[0], *it++); });
-
-        if (std::all_of(dists.begin(), dists.end(), [](double d) { return d == 0; }))
-        {
-            for (index_t duplicate_child_pt : descendants)
-                add_vertex(duplicate_child_pt, parent_id);
-
-            stack.pop_back();
-            continue;
-        }
-
-        std::vector<index_t> child_descendants = {pt[parent_id]};
-        double parent_ball_radius = vertex_ball_radius(parent_id);
-
-        for (index_t k = 0; k < n_descendants; ++k)
-        {
-            index_t farthest = std::distance(dists.begin(), std::max_element(dists.begin(), dists.end()));
-
-            if (dists[farthest] <= (parent_ball_radius/base))
-                break;
-
-            index_t next_child_id = descendants[farthest];
-            child_descendants.push_back(next_child_id);
-
-            for (index_t j = 0; j < n_descendants; ++j)
-            {
-                double lastdist = dists[j];
-                double curdist = point_dist(descendants[j], next_child_id);
-
-                if (curdist <= lastdist)
-                {
-                    dists[j] = curdist;
-                    closest[j] = next_child_id;
-                }
-            }
-        }
-
-        std::vector<std::tuple<index_t, std::vector<index_t>>> next_parents;
-
-        for (index_t child_pt : child_descendants)
-        {
-            std::vector<index_t> next_descendants = {child_pt};
-
-            for (index_t j = 0; j < n_descendants; ++j)
-                if (closest[j] == child_pt && descendants[j] != child_pt)
-                    next_descendants.push_back(descendants[j]);
-
-            index_t next_point_id = add_vertex(child_pt, parent_id);
-            next_parents.emplace_back(next_point_id, next_descendants);
-        }
-
-        stack.pop_back();
-        stack.reserve(stack.size() + next_parents.size());
-        std::copy(next_parents.begin(), next_parents.end(), std::back_inserter(stack));
     }
 }
 

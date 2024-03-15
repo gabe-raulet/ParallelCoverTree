@@ -48,6 +48,9 @@ private:
     double vertex_ball_radius(index_t vertex_id) const;
 
     std::vector<std::vector<index_t>> get_level_set() const;
+
+    std::vector<std::tuple<index_t, std::vector<index_t>>>
+    compute_child_points(index_t parent_id, const std::vector<index_t>& descendants) const;
 };
 
 #endif
