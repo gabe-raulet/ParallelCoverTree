@@ -31,8 +31,8 @@ std::vector<std::vector<index_t>> greedy_partitioning(const std::vector<index_t>
     for (index_t i = 0; i < num_tasks; ++i)
     {
         int proc = std::distance(loads.begin(), std::min_element(loads.begin(), loads.end()));
-        loads[proc] += tasks[proc];
-        partitions[proc].push_back(i);
+        loads[proc] += tasks[i];
+        partitions[proc].push_back(tasks[i]);
     }
 
     return partitions;
@@ -215,6 +215,7 @@ void CoverTree::build_tree()
     std::iota(root_descendants.begin(), root_descendants.end(), 0);
     queue.emplace_back(root_id, root_descendants);
 
+    index_t cur_level = 0;
     std::vector<std::vector<index_t>> descendant_counts;
 
     while (queue.size() != 0)
@@ -225,6 +226,24 @@ void CoverTree::build_tree()
 
         descendant_counts.resize(level[parent_id]+1);
         descendant_counts[level[parent_id]].push_back(descendants.size());
+
+        if (level[parent_id] != cur_level)
+        {
+            std::sort(descendant_counts[cur_level].begin(), descendant_counts[cur_level].end(), std::greater<>());
+            auto partitions = greedy_partitioning(descendant_counts[cur_level], 8);
+
+            for (int i = 0; i < 8; ++i)
+            {
+                int total = std::accumulate(partitions[i].begin(), partitions[i].end(), 0, std::plus<int>());
+                printf("proc[%d] has %d total: ", i, total);
+                std::copy(partitions[i].begin(), partitions[i].end(), std::ostream_iterator<int>(std::cout, " "));
+                std::cout << std::endl;
+            }
+
+            //std::copy(descendant_counts[cur_level].begin(), descendant_counts[cur_level].end(), std::ostream_iterator<index_t>(std::cout, " "));
+            cur_level = level[parent_id];
+            std::cout << std::endl;
+        }
 
         queue.pop_front();
 
@@ -241,32 +260,32 @@ void CoverTree::build_tree()
         }
     }
 
-    print_info(stderr);
-    std::cerr << std::endl;
+    //print_info(stderr);
+    //std::cerr << std::endl;
 
-    auto level_set = get_level_set();
-    std::vector<index_t> num_leaves;
+    //auto level_set = get_level_set();
+    //std::vector<index_t> num_leaves;
 
-    for (index_t l = 0; l < descendant_counts.size(); ++l)
-    {
-        index_t c = 0;
+    //for (index_t l = 0; l < descendant_counts.size(); ++l)
+    //{
+        //index_t c = 0;
 
-        for (auto v : level_set[l])
-        {
-            if (children[v].size() == 0)
-                c++;
-        }
+        //for (auto v : level_set[l])
+        //{
+            //if (children[v].size() == 0)
+                //c++;
+        //}
 
-        num_leaves.push_back(c);
-    }
+        //num_leaves.push_back(c);
+    //}
 
-    for (index_t l = 0; l < descendant_counts.size(); ++l)
-    {
-        index_t total = std::accumulate(descendant_counts[l].begin(), descendant_counts[l].end(), static_cast<index_t>(0), [](auto a, auto b) { return a + b; });
-        std::cerr << "level=" << l << " :: total=" << total << " :: leaves=" << num_leaves[l] << " :: ";
-        std::copy(descendant_counts[l].begin(), descendant_counts[l].end(), std::ostream_iterator<index_t>(std::cerr, " "));
-        std::cerr << std::endl;
-    }
+    //for (index_t l = 0; l < descendant_counts.size(); ++l)
+    //{
+        //index_t total = std::accumulate(descendant_counts[l].begin(), descendant_counts[l].end(), static_cast<index_t>(0), [](auto a, auto b) { return a + b; });
+        //std::cerr << "level=" << l << " :: total=" << total << " :: leaves=" << num_leaves[l] << " :: ";
+        //std::copy(descendant_counts[l].begin(), descendant_counts[l].end(), std::ostream_iterator<index_t>(std::cerr, " "));
+        //std::cerr << std::endl;
+    //}
 }
 
 index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
