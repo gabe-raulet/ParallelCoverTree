@@ -8,6 +8,7 @@
 #include <tuple>
 #include <assert.h>
 #include <stdio.h>
+#include <mpi.h>
 
 double distance(const float *p, const float *q, int d)
 {
@@ -216,13 +217,13 @@ CoverTree::compute_child_points(index_t parent_id, const std::vector<index_t>& d
     return child_info;
 }
 
-bool CoverTree::expand_leaves()
+index_t CoverTree::expand_leaves()
 {
     index_t num_leaves = leaf_vertices.size();
     assert(num_leaves == leaf_descendants.size());
 
     if (num_leaves == 0)
-        return false;
+        return num_leaves;
 
     std::vector<index_t> next_leaf_vertices;
     std::vector<std::vector<index_t>> next_leaf_descendants;
@@ -250,15 +251,49 @@ bool CoverTree::expand_leaves()
     leaf_vertices = next_leaf_vertices;
     leaf_descendants = next_leaf_descendants;
 
-    return true;
+    return leaf_vertices.size();
 }
 
-void CoverTree::build_tree()
+void CoverTree::build_root_tree(int nprocs)
 {
     for (;;)
     {
-        if (!expand_leaves())
+        index_t num_leaves = expand_leaves();
+
+        if (num_leaves == 0)
             break;
+
+        std::vector<index_t> tasks(num_leaves);
+        std::vector<index_t> loads(nprocs, 0);
+        std::vector<std::vector<index_t>> partitions(nprocs);
+
+        for (index_t i = 0; i < num_leaves; ++i)
+        {
+            tasks[i] = leaf_descendants[i].size();
+            int proc = std::distance(loads.begin(), std::min_element(loads.begin(), loads.end()));
+            loads[proc] += tasks[i];
+            partitions[proc].push_back(i);
+        }
+
+        int myrank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+
+        for (int i = 0; i < nprocs; ++i)
+        {
+            index_t min_task_size = std::numeric_limits<index_t>::max();
+            index_t max_task_size = 0;
+            double avg_task_size = 0;
+
+            for (index_t taskid : partitions[i])
+            {
+                min_task_size = std::min(tasks[taskid], min_task_size);
+                max_task_size = std::max(tasks[taskid], max_task_size);
+                avg_task_size += tasks[taskid];
+            }
+            avg_task_size /= partitions[i].size();
+            if (!myrank) std::cerr << "proc[" << i << "]: min_task_size=" << min_task_size << ", max_task_size=" << max_task_size << ", avg_task_size=" << avg_task_size << std::endl;
+        }
+
     }
 }
 

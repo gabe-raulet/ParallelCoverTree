@@ -29,8 +29,8 @@ public:
     void write_to_file(const char *fname) const;
     void read_from_file(const char *fname);
 
-    void build_tree();
-    bool expand_leaves();
+    void build_root_tree(int nprocs);
+    index_t expand_leaves();
 
 private:
     double max_radius, base;
