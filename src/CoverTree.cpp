@@ -42,7 +42,12 @@ CoverTree::CoverTree(const float *p, index_t n, int d, double base)
     : base(base), pointmem(new float[d*n]), npoints(n), d(d)
 {
     std::copy(p, p + n*d, pointmem.get());
-    build_tree();
+
+    max_radius = -1;
+    for (index_t i = 0; i < npoints; ++i)
+    {
+        max_radius = std::max(max_radius, distance(&pointmem[0], &pointmem[i*d], d));
+    }
 }
 
 bool CoverTree::is_full() const
@@ -206,8 +211,6 @@ CoverTree::compute_child_points(index_t parent_id, const std::vector<index_t>& d
 
 void CoverTree::build_tree()
 {
-    set_max_radius();
-
     std::list<std::tuple<index_t, std::vector<index_t>>> queue;
 
     index_t root_id = add_vertex(0, -1);
@@ -271,16 +274,6 @@ index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
     level.push_back(vertex_level);
 
     return vertex_id;
-}
-
-void CoverTree::set_max_radius()
-{
-    max_radius = -1;
-
-    for (index_t i = 0; i < npoints; ++i)
-    {
-        max_radius = std::max(max_radius, distance(&pointmem[0], &pointmem[i*d], d));
-    }
 }
 
 double CoverTree::point_dist(index_t id1, index_t id2) const

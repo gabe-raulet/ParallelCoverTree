@@ -29,6 +29,8 @@ public:
     void write_to_file(const char *fname) const;
     void read_from_file(const char *fname);
 
+    void build_tree();
+
 private:
     double max_radius, base;
     std::unique_ptr<float[]> pointmem;
@@ -39,8 +41,9 @@ private:
     std::vector<index_t> level;
     std::vector<std::vector<index_t>> children;
 
-    void build_tree();
-    void set_max_radius();
+    std::vector<index_t> leaf_vertices;
+    std::vector<std::vector<index_t>> leaf_descendants;
+
     index_t add_vertex(index_t point_id, index_t parent_id);
 
     double point_dist(index_t id1, index_t id2) const;

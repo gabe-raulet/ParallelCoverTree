@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
 
         timer.start_timer();
         CoverTree tree(p, npoints, dim, base);
+        tree.build_tree();
         timer.stop_timer();
 
         if (myrank == timer.root) printf("(build_cover_tree) :: [n_verts=%lld,base=%.2f] :: [maxtime=%.4f,avgtime=%.4f (seconds)]\n", tree.num_vertices(), base, timer.maxtime, timer.proctime/nprocs);
