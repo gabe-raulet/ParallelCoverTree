@@ -30,6 +30,7 @@ public:
     void read_from_file(const char *fname);
 
     void build_tree();
+    bool expand_leaves();
 
 private:
     double max_radius, base;

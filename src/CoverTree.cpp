@@ -48,6 +48,13 @@ CoverTree::CoverTree(const float *p, index_t n, int d, double base)
     {
         max_radius = std::max(max_radius, distance(&pointmem[0], &pointmem[i*d], d));
     }
+
+    index_t root_id = add_vertex(0, -1);
+    std::vector<index_t> root_descendants(npoints);
+    std::iota(root_descendants.begin(), root_descendants.end(), 0);
+
+    leaf_vertices.push_back(root_id);
+    leaf_descendants.push_back(root_descendants);
 }
 
 bool CoverTree::is_full() const
@@ -209,35 +216,22 @@ CoverTree::compute_child_points(index_t parent_id, const std::vector<index_t>& d
     return child_info;
 }
 
-void CoverTree::build_tree()
+bool CoverTree::expand_leaves()
 {
-    std::list<std::tuple<index_t, std::vector<index_t>>> queue;
+    index_t num_leaves = leaf_vertices.size();
+    assert(num_leaves == leaf_descendants.size());
 
-    index_t root_id = add_vertex(0, -1);
-    std::vector<index_t> root_descendants(npoints);
-    std::iota(root_descendants.begin(), root_descendants.end(), 0);
-    queue.emplace_back(root_id, root_descendants);
+    if (num_leaves == 0)
+        return false;
 
-    index_t cur_level = 0;
-    std::vector<std::vector<index_t>> descendant_counts;
+    std::vector<index_t> next_leaf_vertices;
+    std::vector<std::vector<index_t>> next_leaf_descendants;
 
-    while (queue.size() != 0)
+    for (index_t i = 0; i < num_leaves; ++i)
     {
-        index_t parent_id = std::get<0>(queue.front());
-        const auto& descendants = std::get<1>(queue.front());
+        index_t parent_id = leaf_vertices[i];
+        const auto& descendants = leaf_descendants[i];
         const auto& child_info = compute_child_points(parent_id, descendants);
-
-        descendant_counts.resize(level[parent_id]+1);
-        descendant_counts[level[parent_id]].push_back(descendants.size());
-
-        if (level[parent_id] != cur_level)
-        {
-            std::sort(descendant_counts[cur_level].begin(), descendant_counts[cur_level].end(), std::greater<>());
-            auto partitions = greedy_partitioning(descendant_counts[cur_level], 8);
-            cur_level = level[parent_id];
-        }
-
-        queue.pop_front();
 
         for (const auto& item : child_info)
         {
@@ -248,8 +242,23 @@ void CoverTree::build_tree()
                 continue;
 
             index_t next_vertex_id = add_vertex(child_pt, parent_id);
-            queue.emplace_back(next_vertex_id, next_descendants);
+            next_leaf_vertices.push_back(next_vertex_id);
+            next_leaf_descendants.push_back(next_descendants);
         }
+    }
+
+    leaf_vertices = next_leaf_vertices;
+    leaf_descendants = next_leaf_descendants;
+
+    return true;
+}
+
+void CoverTree::build_tree()
+{
+    for (;;)
+    {
+        if (!expand_leaves())
+            break;
     }
 }
 
