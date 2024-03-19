@@ -12,7 +12,6 @@ typedef int64_t index_t;
 class CoverTree
 {
 public:
-    CoverTree() : max_radius(0), base(2), pointmem(NULL), npoints(0), d(0) {}
     CoverTree(const float *p, index_t n, int d, double base = 2.);
 
     index_t num_points() const { return npoints; }
