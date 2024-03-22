@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <assert.h>
 #include <stdio.h>
 #include <mpi.h>
 #include "MPITimer.h"
