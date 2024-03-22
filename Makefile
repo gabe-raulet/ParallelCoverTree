@@ -25,8 +25,8 @@ all: dist_benchmark_nng
 install: dist_benchmark_nng
 	cp dist_benchmark_nng /global/homes/g/gabeh98/software/cover_tree
 
-dist_benchmark_nng: programs/dist_benchmark_nng.cpp src/CoverTree.cpp include/CoverTree.h src/read_args.cpp include/read_args.h
-	$(MPICXX) -o dist_benchmark_nng $(INCLUDES) $(MPIFLAGS) programs/dist_benchmark_nng.cpp src/CoverTree.cpp src/read_args.cpp
+dist_benchmark_nng: programs/dist_benchmark_nng.cpp src/CoverTree.cpp include/CoverTree.h src/MPITimer.cpp include/MPITimer.h src/read_args.cpp include/read_args.h
+	$(MPICXX) -o dist_benchmark_nng $(INCLUDES) $(MPIFLAGS) programs/dist_benchmark_nng.cpp src/CoverTree.cpp src/MPITimer.cpp src/read_args.cpp
 
 clean:
 	rm -rf *.dSYM *.bin *.fvecs dist_benchmark_nng

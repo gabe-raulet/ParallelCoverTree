@@ -14,19 +14,8 @@
 #include <math.h>
 #include <mpi.h>
 #include "CoverTree.h"
+#include "MPITimer.h"
 #include "read_args.h"
-
-struct MPITimer
-{
-    MPITimer(MPI_Comm comm, int root);
-    void start_timer();
-    void stop_timer();
-
-    MPI_Comm comm;
-    int root;
-    double t;
-    double maxtime, proctime;
-};
 
 extern double distance(const float *p, const float *q, int d);
 std::vector<float> generate_points(int64_t n, int d, double var, int seed, MPI_Comm comm);
@@ -270,19 +259,4 @@ std::string return_current_time_and_date()
     std::stringstream ss;
     ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
     return ss.str();
-}
-
-MPITimer::MPITimer(MPI_Comm comm, int root) : comm(comm), root(root) {}
-
-void MPITimer::start_timer()
-{
-    MPI_Barrier(comm);
-    t = -MPI_Wtime();
-}
-
-void MPITimer::stop_timer()
-{
-    t += MPI_Wtime();
-    MPI_Reduce(&t, &maxtime,  1, MPI_DOUBLE, MPI_MAX, root, comm);
-    MPI_Reduce(&t, &proctime, 1, MPI_DOUBLE, MPI_SUM, root, comm);
 }
