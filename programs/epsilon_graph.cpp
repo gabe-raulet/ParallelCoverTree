@@ -44,6 +44,14 @@ int main(int argc, char *argv[])
     seed = read_int_arg(argc, argv, "-s", &seed);
     base = read_double_arg(argc, argv, "-C", &base);
 
+    if (seed < 0)
+    {
+        random_device rd;
+        default_random_engine gen(rd());
+        uniform_int_distribution<int> dis{numeric_limits<int>::min(), numeric_limits<int>::max()};
+        seed = dis(gen);
+    }
+
     /*
      * Construct random point set
      */
