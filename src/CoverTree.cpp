@@ -5,6 +5,7 @@
 #include <list>
 #include <unordered_set>
 #include <cassert>
+#include <stdio.h>
 
 CoverTree::CoverTree(const vector<Point>& points, double base)
     : max_radius(-1), base(base), points(points)
@@ -255,4 +256,39 @@ int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
 double CoverTree::vertex_ball_radius(int64_t vertex_id) const
 {
     return pow(base, -1. * level[vertex_id]);
+}
+
+void CoverTree::write_gml(const char *filename) const
+{
+    FILE *f = fopen(filename, "w");
+
+    fprintf(f, "graph\n[\n");
+
+    for (int64_t id = 0; id < num_vertices(); ++id)
+    {
+        fprintf(f, "\tnode\n\t[\n\t\tid %lld\n\t\tpt %lld\n\t\tlevel %lld\n\t\tcover %.3f\n\t\trepr %s\n\t]\n",
+                id, pt[id], level[id], vertex_ball_radius(id), points[pt[id]].repr().c_str());
+    }
+
+    vector<int64_t> stack = {0};
+
+    while (stack.size() != 0)
+    {
+        int64_t vtx = stack.back(); stack.pop_back();
+        vector<int64_t> mychildren = children[vtx];
+
+        const Point& source = get_vertex_point(vtx);
+
+        for (int64_t child : mychildren)
+        {
+            const Point& target = get_vertex_point(child);
+            fprintf(f, "\tedge\n\t[\n\t\tsource %lld\n\t\ttarget %lld\n\t\tdistance %.3f\n\t]\n",
+                    vtx, child, source.distance(target) / max_radius);
+            stack.push_back(child);
+        }
+    }
+
+    fprintf(f, "]\n");
+
+    fclose(f);
 }

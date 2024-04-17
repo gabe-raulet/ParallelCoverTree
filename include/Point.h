@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <utility>
+#include <string>
 
 using namespace std;
 
@@ -26,6 +27,8 @@ public:
 
     double distance(const Point& rhs) const;
     friend double distance(const Point& p, const Point& q);
+
+    string repr() const;
 
     static vector<Point> random_points(int64_t num_points, double var, int seed);
 

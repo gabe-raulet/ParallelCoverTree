@@ -21,6 +21,8 @@ public:
     vector<int64_t> radii_query(const Point& query, double radius) const;
     vector<vector<int64_t>> build_epsilon_graph(double radius) const;
 
+    void write_gml(const char *filename) const;
+
 private:
     double max_radius, base;
     vector<Point> points;

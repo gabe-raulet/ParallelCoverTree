@@ -1,5 +1,7 @@
 #include "Point.h"
 #include <cmath>
+#include <sstream>
+#include <iomanip>
 
 Point::Point() { data[0] = data[1] = 0; }
 Point::Point(const float *p) { data[0] = p[0], data[1] = p[1]; }
@@ -46,4 +48,11 @@ vector<Point> Point::random_points(int64_t num_points, double var, int seed)
         points.emplace_back(&point_data[i*Point::dim]);
 
     return points;
+}
+
+string Point::repr() const
+{
+    stringstream ss;
+    ss << "[" << setprecision(3) << data[0] << ", " << data[1] << "]";
+    return ss.str();
 }
