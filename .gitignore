@@ -3,5 +3,4 @@
 *.o
 *.bin
 *.swp
-dist_benchmark_nng
-dist_greedy_benchmark
+epsilon_graph

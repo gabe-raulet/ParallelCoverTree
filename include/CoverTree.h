@@ -1,55 +1,41 @@
 #ifndef COVER_TREE_H_
 #define COVER_TREE_H_
 
-#include <stdint.h>
-#include <stdio.h>
-#include <math.h>
+#include "Point.h"
 #include <vector>
-#include <memory>
 
-typedef int64_t index_t;
+using namespace std;
 
 class CoverTree
 {
 public:
-    CoverTree(const float *p, index_t n, int d, double base = 2.);
+    CoverTree(const vector<Point>& points, double base);
 
-    index_t num_points() const { return npoints; }
-    index_t num_vertices() const { return pt.size(); }
-    int getdim() const { return d; }
-    const float* getdata() const { return pointmem.get(); }
+    int64_t num_points() const { return points.size(); }
+    int64_t num_vertices() const { return pt.size(); }
+    int64_t num_levels() const { return *max_element(level.begin(), level.end()) + 1; }
 
-    std::vector<index_t> radii_query(const float *query, double radius) const;
+    Point get_point(int64_t point_id) const { return points[point_id]; }
+    Point get_vertex_point(int64_t vertex_id) const { return points[pt[vertex_id]]; }
 
-    bool is_full() const;
-    bool is_nested() const;
-    bool is_covering() const;
-    void print_info(FILE *f) const;
-
-    void write_to_file(const char *fname) const;
-    void read_from_file(const char *fname);
+    vector<int64_t> radii_query(const Point& query, double radius) const;
+    vector<vector<int64_t>> build_epsilon_graph(double radius) const;
 
 private:
     double max_radius, base;
-    std::unique_ptr<float[]> pointmem;
-    index_t npoints;
-    int d;
+    vector<Point> points;
 
-    std::vector<index_t> pt;
-    std::vector<index_t> level;
-    std::vector<std::vector<index_t>> children;
+    vector<int64_t> pt, level;
+    vector<vector<int64_t>> children;
 
     void build_tree();
     void set_max_radius();
-    index_t add_vertex(index_t point_id, index_t parent_id);
 
-    double point_dist(index_t id1, index_t id2) const;
-    double vertex_ball_radius(index_t vertex_id) const;
+    int64_t add_vertex(int64_t point_id, int64_t parent_id);
+    double vertex_ball_radius(int64_t vertex_id) const;
 
-    std::vector<std::vector<index_t>> get_level_set() const;
-
-    std::vector<std::tuple<index_t, std::vector<index_t>>>
-    compute_child_points(index_t parent_id, const std::vector<index_t>& descendants) const;
+    void update_cell(vector<double>& dists, vector<int64_t>& closest, int64_t farthest, const vector<int64_t>& descendants) const;
+    vector<vector<int64_t>> compute_child_partitions(int64_t parent_id, const vector<int64_t>& descendants) const;
 };
 
 #endif

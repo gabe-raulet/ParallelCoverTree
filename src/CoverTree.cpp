@@ -1,264 +1,236 @@
 #include "CoverTree.h"
+#include "Point.h"
 #include <list>
-#include <algorithm>
+#include <limits>
+#include <list>
 #include <unordered_set>
-#include <iterator>
-#include <iostream>
-#include <random>
-#include <tuple>
-#include <assert.h>
-#include <stdio.h>
+#include <cassert>
 
-double distance(const float *p, const float *q, int d)
+CoverTree::CoverTree(const vector<Point>& points, double base)
+    : max_radius(-1), base(base), points(points)
 {
-    double sum = 0., di;
-
-    for (int i = 0; i < d; ++i)
-    {
-        di = p[i] - q[i];
-        sum += di*di;
-    }
-
-    return std::sqrt(sum);
-}
-
-std::vector<std::vector<index_t>> greedy_partitioning(const std::vector<index_t>& tasks, int nprocs)
-{
-    size_t num_tasks = tasks.size();
-    std::vector<index_t> loads(nprocs, 0);
-    std::vector<std::vector<index_t>> partitions(nprocs);
-
-    for (index_t i = 0; i < num_tasks; ++i)
-    {
-        int proc = std::distance(loads.begin(), std::min_element(loads.begin(), loads.end()));
-        loads[proc] += tasks[i];
-        partitions[proc].push_back(tasks[i]);
-    }
-
-    return partitions;
-}
-
-CoverTree::CoverTree(const float *p, index_t n, int d, double base)
-    : base(base), pointmem(new float[d*n]), npoints(n), d(d)
-{
-    std::copy(p, p + n*d, pointmem.get());
+    set_max_radius();
     build_tree();
 }
 
-bool CoverTree::is_full() const
+vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
 {
-    std::vector<bool> bits(npoints, false);
-
-    for (size_t i = 0; i < num_vertices(); ++i)
-        bits[pt[i]] = true;
-
-    return std::all_of(bits.begin(), bits.end(), [](bool item) { return item == true; });
-}
-
-bool CoverTree::is_nested() const
-{
-    std::vector<index_t> stack = {0};
-    std::vector<index_t> mychildren;
-    index_t u, v;
-    index_t m;
-    bool found;
+    unordered_set<int64_t> idset; // point ids of points within a distance of @radius of @query
+    vector<int64_t> stack = {0}; // start exploring tree from root (point id 0)
 
     while (stack.size() != 0)
     {
-        u = stack.back(); stack.pop_back();
-        mychildren = children[u];
+        // get next point @u
+        int64_t u = stack.back(); stack.pop_back();
+        vector<int64_t> mychildren = children[u];
 
-        found = false;
-
-        for (index_t v : mychildren)
+        // go through children of @u
+        for (int64_t v : mychildren)
         {
-            stack.push_back(v);
-
-            if (pt[u] == pt[v])
-            {
-                if (found) return false;
-                found = true;
-            }
-        }
-    }
-
-    return true;
-}
-
-bool CoverTree::is_covering() const
-{
-    std::vector<index_t> stack = {0};
-    std::vector<index_t> mychildren;
-    index_t u, v;
-    index_t m;
-    double ball_radius, d;
-
-    while (stack.size() != 0)
-    {
-        u = stack.back(); stack.pop_back();
-        mychildren = children[u];
-        ball_radius = vertex_ball_radius(u);
-
-        for (index_t v : mychildren)
-        {
-            stack.push_back(v);
-            d = point_dist(pt[u], pt[v]);
-
-            if (d > ball_radius)
-                return false;
-        }
-    }
-
-    return true;
-}
-
-std::vector<index_t> CoverTree::radii_query(const float *query, double radius) const
-{
-    std::unordered_set<index_t> idset;
-    std::vector<index_t> stack = {0};
-
-    index_t u, v;
-    std::vector<index_t> mychildren;
-
-    while (stack.size() != 0)
-    {
-        u = stack.back(); stack.pop_back();
-        mychildren = children[u];
-
-        for (index_t v : mychildren)
-        {
-            const float *p = &pointmem[pt[v]*d];
-
-            if (distance(query, p, d) <= radius + max_radius*vertex_ball_radius(v))
+            // if child of @u is within a distance of @radius and within a distance
+            // the covering distance of @u then we need to explore its children
+            if (query.distance(get_vertex_point(v)) <= radius + max_radius*vertex_ball_radius(v))
                 stack.push_back(v);
 
-            if (distance(query, p, d) <= radius)
+            // add @radius-neighbor of @u to set
+            if (query.distance(get_vertex_point(v)) <= radius)
                 idset.insert(pt[v]);
         }
     }
 
-    return std::vector<index_t>(idset.begin(), idset.end());
+    return vector<int64_t>(idset.begin(), idset.end());
 }
 
-std::vector<std::tuple<index_t, std::vector<index_t>>>
-CoverTree::compute_child_points(index_t parent_id, const std::vector<index_t>& descendants) const
+vector<vector<int64_t>> CoverTree::build_epsilon_graph(double radius) const
 {
-    std::vector<std::tuple<index_t, std::vector<index_t>>> child_info;
-    index_t n_descendants = descendants.size();
-    assert(n_descendants >= 1 && pt[parent_id] == descendants[0]);
+    // graph adjacency list (initialized empty)
+    vector<vector<int64_t>> graph(num_points());
 
-    if (n_descendants == 1) return child_info;
-
-    std::vector<double> dists(n_descendants);
-    std::vector<index_t> closest(n_descendants, descendants[0]);
-
-    auto it = descendants.begin();
-    std::generate(dists.begin(), dists.end(), [&]() { return point_dist(descendants[0], *it++); });
-
-    if (std::all_of(dists.begin(), dists.end(), [](double d) { return d == 0; }))
+    for (int64_t u = 0; u < num_points(); ++u)
     {
-        for (index_t duplicate_child_pt : descendants)
-        {
-            child_info.emplace_back(duplicate_child_pt, std::vector<index_t>());
-        }
-        return child_info;
+        // compute @radius-neighbors of @u
+        graph[u] = radii_query(get_point(u), radius);
     }
 
-    std::vector<index_t> child_descendants = {pt[parent_id]};
-    double parent_ball_radius = vertex_ball_radius(parent_id);
+    return graph;
+}
 
-    for (index_t k = 0; k < n_descendants; ++k)
+/*
+ * CoverTree::set_max_radius() determines the maximum distance between the
+ * root point (the first point in the data by convention) and all other
+ * points. This is used to normalize distance calculations so that the
+ * maximum normalized distance between the root vertex and all other vertices
+ * in the tree is 1.
+ */
+void CoverTree::set_max_radius()
+{
+    // to normalize distances, find distance of farthest point from
+    // root (vertex index 0)
+    for (const Point& point : points)
     {
-        index_t farthest = std::distance(dists.begin(), std::max_element(dists.begin(), dists.end()));
-
-        if (dists[farthest] <= (parent_ball_radius / base))
-            break;
-
-        index_t next_child_id = descendants[farthest];
-        child_descendants.push_back(next_child_id);
-
-        for (index_t j = 0; j < n_descendants; ++j)
-        {
-            double lastdist = dists[j];
-            double curdist = point_dist(descendants[j], next_child_id);
-
-            if (curdist <= lastdist)
-            {
-                dists[j] = curdist;
-                closest[j] = next_child_id;
-            }
-        }
+        max_radius = max(max_radius, points.front().distance(point));
     }
-
-    for (index_t child_pt : child_descendants)
-    {
-        std::vector<index_t> next_descendants = {child_pt};
-
-        for (index_t j = 0; j < n_descendants; ++j)
-            if (closest[j] == child_pt && descendants[j] != child_pt)
-                next_descendants.push_back(descendants[j]);
-
-        child_info.emplace_back(child_pt, next_descendants);
-    }
-
-    return child_info;
 }
 
 void CoverTree::build_tree()
 {
-    set_max_radius();
+    // list of tasks, each of which is identified by a (1) unexpanded vertex (newly constructed)
+    // and (2) list of its descendants.
+    list<tuple<int64_t, vector<int64_t>>> tasks;
 
-    std::list<std::tuple<index_t, std::vector<index_t>>> queue;
+    // list of descendant points for vertex we are currently "expanding"
+    vector<int64_t> descendants(num_points());
+    iota(descendants.begin(), descendants.end(), 0); // starts with all of them
 
-    index_t root_id = add_vertex(0, -1);
-    std::vector<index_t> root_descendants(npoints);
-    std::iota(root_descendants.begin(), root_descendants.end(), 0);
-    queue.emplace_back(root_id, root_descendants);
+    // add the root task with all points as descendants
+    int64_t parent_id = add_vertex(descendants.front(), -1);
+    tasks.emplace_back(parent_id, descendants);
 
-    index_t cur_level = 0;
-    std::vector<std::vector<index_t>> descendant_counts;
+    // for the current task (expanding a vertex with a given vertex id)
+    // we partition the set of descendants of that vertex into "Voronoi cells",
+    // with the first point id in each partition being a point in the "Voronoi
+    // diagram" and every other point in a given partition will be a tree
+    // descendant of the first point
+    vector<vector<int64_t>> child_partitions;
 
-    while (queue.size() != 0)
+    // while there are still unexpanded vertices in tree
+    while (tasks.size() != 0)
     {
-        index_t parent_id = std::get<0>(queue.front());
-        const auto& descendants = std::get<1>(queue.front());
-        const auto& child_info = compute_child_points(parent_id, descendants);
+        // get next vertex to expand and its associated descendant points
+        tie(parent_id, descendants) = tasks.front(); tasks.pop_front();
 
-        descendant_counts.resize(level[parent_id]+1);
-        descendant_counts[level[parent_id]].push_back(descendants.size());
+        // compute a partitioning of @descendants ids so that the first
+        // id of each partition will be a direct child of the vertex @parent_id
+        // and so that the set of all descendant points that are closest to
+        // the direct child comprise the remaining points in the partition
+        child_partitions = compute_child_partitions(parent_id, descendants);
 
-        if (level[parent_id] != cur_level)
+        // add all direct children as vertices in the graph and create new tasks
+        // for each of them with their associated descendants partition.
+        for (int64_t i = 0; i < child_partitions.size(); ++i)
         {
-            std::sort(descendant_counts[cur_level].begin(), descendant_counts[cur_level].end(), std::greater<>());
-            auto partitions = greedy_partitioning(descendant_counts[cur_level], 8);
-            cur_level = level[parent_id];
-        }
-
-        queue.pop_front();
-
-        for (const auto& item : child_info)
-        {
-            const auto& child_pt = std::get<0>(item);
-            const auto& next_descendants = std::get<1>(item);
-
-            if (next_descendants.size() == 0)
-                continue;
-
-            index_t next_vertex_id = add_vertex(child_pt, parent_id);
-            queue.emplace_back(next_vertex_id, next_descendants);
+            int64_t vertex_id = add_vertex(child_partitions[i].front(), parent_id);
+            tasks.emplace_back(vertex_id, child_partitions[i]);
         }
     }
 }
 
-index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
+void CoverTree::update_cell(vector<double>& dists, vector<int64_t>& closest, int64_t farthest, const vector<int64_t>& descendants) const
 {
-    index_t vertex_level;
-    index_t vertex_id = num_vertices();
+    int64_t n = dists.size();
+    assert(dists.size() == closest.size());
 
-    pt.push_back(point_id);
-    children.resize(children.size()+1);
+    // compute the distance between @descendants[@farthest] and every other
+    // point in @descendants and update @dists with the minimum of whatever
+    // value was computed and the previous value that was stored there; also
+    // update @closest vector to point to @descendants[@farthest] for those
+    // descendant points that became closer.
+    for (int64_t i = 0; i < n; ++i)
+    {
+        double lastdist = dists[i];
+        double curdist = get_point(descendants[i]).distance(get_point(descendants[farthest])) / max_radius;
 
-    if (parent_id >= 0)
+        if (curdist <= lastdist)
+        {
+            dists[i] = curdist;
+            closest[i] = descendants[farthest];
+        }
+    }
+}
+
+vector<vector<int64_t>> CoverTree::compute_child_partitions(int64_t parent_id, const vector<int64_t>& descendants) const
+{
+    // @child_partitions simply partitions @descendants into disjoint sets of
+    // direct children (first point id in partition vector) and their descendants
+    // (remaining points in partition vector)
+    vector<vector<int64_t>> child_partitions;
+    int64_t n_descendants = descendants.size();
+
+    // first descendant point must be the nested point of parent
+    assert(n_descendants >= 1 && pt[parent_id] == descendants.front());
+
+    // if no descendants (besides nested child) then @parent_id
+    // is a leaf vertex and we don't compute any more of its descendants
+    if (n_descendants == 1) return child_partitions;
+
+    // maintain distances between growing set of computed direct children
+    // and the set of all @descendants, in addition to pointers telling us
+    // each of @descendants closest direct children.
+    vector<double> dists(n_descendants, numeric_limits<double>::max());
+    vector<int64_t> closest(n_descendants, descendants.front());
+
+    // initialize distances and pointers of all @descendants relative to
+    // the parent point (same as nested point)
+    update_cell(dists, closest, 0, descendants);
+
+    // if distance between parent point and all of its descendants is 0,
+    // then it means that all of these points are duplicates; therefore
+    // we just add them all as direct children leaves of parent and no
+    // more descendants need to be computed of @parent_id
+    if (all_of(dists.begin(), dists.end(), [](double d) { return d == 0; }))
+    {
+        for (int64_t duplicate_child_pt : descendants)
+        {
+            child_partitions.push_back({duplicate_child_pt});
+        }
+        return child_partitions;
+    }
+
+    // initialize nested child partition hub
+    child_partitions.push_back({pt[parent_id]});
+
+    // cover radius of parent for determining direct children
+    double parent_ball_radius = vertex_ball_radius(parent_id);
+
+    // loop through descendants
+    for (int64_t k = 0; k < n_descendants; ++k)
+    {
+        // find descendant farthest from current set of partition hub points
+        int64_t farthest = distance(dists.begin(), max_element(dists.begin(), dists.end()));
+
+        // if we violate separation condition here then stop adding
+        // new direct children
+        if (dists[farthest] <= (parent_ball_radius / base))
+            break;
+
+        // add new partition and associated hub point
+        child_partitions.push_back({descendants[farthest]});
+
+        // update distances and pointers
+        update_cell(dists, closest, farthest, descendants);
+    }
+
+    // go through each partition and use pointers to determine
+    // which non-child descendants are closest to partition hub point
+    // and add them to partition; don't add partition hub point itself
+    // since we already added it (because it is assumed to always be first
+    // in partition)
+    for (int64_t i = 0; i < child_partitions.size(); ++i)
+    {
+        int64_t hub_point = child_partitions[i].front();
+
+        for (int64_t j = 0; j < n_descendants; ++j)
+            if (closest[j] == hub_point && descendants[j] != hub_point)
+                child_partitions[i].push_back(descendants[j]);
+    }
+
+    return child_partitions;
+}
+
+/*
+ * CoverTree::add_vertex(@point_id, @parent_id) adds a vertex to
+ * the tree whose associated point has point id @point_id and whose
+ * parent vertex has vertex id @parent_id.
+ */
+int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
+{
+    int64_t vertex_level; // level of new vertex
+    int64_t vertex_id = pt.size(); // vertex id of new vertex
+
+    pt.push_back(point_id); // pt[vertex_id] = point_id
+    children.emplace_back(); // new vertex initialized with no children
+
+    if (parent_id >= 0) // @vertex_id is not the root vertex
     {
         vertex_level = level[parent_id] + 1;
         children[parent_id].push_back(vertex_id);
@@ -273,123 +245,14 @@ index_t CoverTree::add_vertex(index_t point_id, index_t parent_id)
     return vertex_id;
 }
 
-void CoverTree::set_max_radius()
+/*
+ * CoverTree::vertex_ball_radius(@vertex_id) returns the radius
+ * of the coverage for the children of @vertex_id.
+ *
+ * For a vertex on level k, its children must all be within a distance
+ * of 1 / 2^k.
+ */
+double CoverTree::vertex_ball_radius(int64_t vertex_id) const
 {
-    max_radius = -1;
-
-    for (index_t i = 0; i < npoints; ++i)
-    {
-        max_radius = std::max(max_radius, distance(&pointmem[0], &pointmem[i*d], d));
-    }
-}
-
-double CoverTree::point_dist(index_t id1, index_t id2) const
-{
-    return distance(&pointmem[d*id1], &pointmem[d*id2], d) / max_radius;
-}
-
-double CoverTree::vertex_ball_radius(index_t vertex_id) const
-{
-    return std::pow(base, -1. * level[vertex_id]);
-}
-
-std::vector<std::vector<index_t>> CoverTree::get_level_set() const
-{
-    index_t num_levels = std::accumulate(level.begin(), level.end(), static_cast<index_t>(0), [](auto a, auto b) { return std::max(a,b); }) + 1;
-    std::vector<std::vector<index_t>> level_set(num_levels);
-
-    for (index_t i = 0; i < pt.size(); ++i)
-        level_set[level[i]].push_back(i);
-
-    return level_set;
-}
-
-void CoverTree::print_info(FILE *f) const
-{
-    const auto& level_set = get_level_set();
-    index_t num_levels = level_set.size();
-
-    fprintf(f, "* number of points: %lld\n", npoints);
-    fprintf(f, "* dimension: %d\n", d);
-    fprintf(f, "* number of vertices: %lu\n", pt.size());
-    fprintf(f, "* number of levels: %lld\n\n", num_levels);
-
-    for (index_t i = 0; i < num_levels; ++i)
-    {
-        double average_vertex_degree = 0;
-
-        for (const auto& v : level_set[i])
-        {
-            average_vertex_degree += children[v].size();
-        }
-
-        average_vertex_degree /= level_set[i].size();
-        fprintf(f, "level %lld has %lu vertices of average degree %.3f\n", i, level_set[i].size(), average_vertex_degree);
-    }
-
-    fprintf(f, "\n");
-    fflush(f);
-}
-
-void CoverTree::read_from_file(const char *fname)
-{
-    FILE *f = fopen(fname, "r");
-    assert(f != NULL);
-
-    index_t n_vertices;
-
-    fread(&npoints, sizeof(index_t), 1, f); assert(npoints >= 1);
-    fread(&d, sizeof(int), 1, f); assert(d >= 1);
-
-    pointmem.reset(new float[d*npoints]);
-    fread(pointmem.get(), sizeof(float), d*npoints, f);
-    fread(&max_radius, sizeof(double), 1, f);
-    fread(&base, sizeof(double), 1, f);
-    fread(&n_vertices, sizeof(index_t), 1, f);
-
-    std::vector<index_t> parent(n_vertices);
-    pt.resize(n_vertices);
-    level.resize(n_vertices);
-
-    fread(pt.data(), sizeof(index_t), n_vertices, f);
-    fread(parent.data(), sizeof(index_t), n_vertices, f);
-    fread(level.data(), sizeof(index_t), n_vertices, f);
-
-    index_t num_levels = std::accumulate(level.begin(), level.end(), static_cast<index_t>(0), [](auto a, auto b) { return std::max(a,b); }) + 1;
-
-    children.resize(n_vertices);
-
-    for (index_t v = 1; v < n_vertices; ++v)
-        children[parent[v]].push_back(v);
-
-    fclose(f);
-}
-
-void CoverTree::write_to_file(const char *fname) const
-{
-    index_t n_vertices = num_vertices();
-    std::vector<index_t> parent(n_vertices);
-    parent[0] = -1;
-
-    for (index_t i = 0; i < n_vertices; ++i)
-    {
-        const auto& child_ids = children[i];
-
-        for (index_t child_id : child_ids)
-            parent[child_id] = i;
-    }
-
-    FILE *f = fopen(fname, "w");
-
-    fwrite(&npoints, sizeof(index_t), 1, f);
-    fwrite(&d, sizeof(int), 1, f);
-    fwrite(pointmem.get(), sizeof(float), d*npoints, f);
-    fwrite(&max_radius, sizeof(double), 1, f);
-    fwrite(&base, sizeof(double), 1, f);
-    fwrite(&n_vertices, sizeof(index_t), 1, f);
-    fwrite(pt.data(), sizeof(index_t), n_vertices, f);
-    fwrite(parent.data(), sizeof(index_t), n_vertices, f);
-    fwrite(level.data(), sizeof(index_t), n_vertices, f);
-
-    fclose(f);
+    return pow(base, -1. * level[vertex_id]);
 }

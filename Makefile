@@ -20,17 +20,13 @@ endif
 
 INCLUDES=-I./include
 
-all: dist_benchmark_nng dist_greedy_benchmark
+all: epsilon_graph
 
-install: dist_benchmark_nng dist_greedy_benchmark
-	cp dist_benchmark_nng /global/homes/g/gabeh98/software/cover_tree
-	cp dist_greedy_benchmark /global/homes/g/gabeh98/software/cover_tree
+install: epsilon_graph
+	cp epsilon_graph /global/homes/g/gabeh98/software/cover_tree
 
-dist_benchmark_nng: programs/dist_benchmark_nng.cpp src/CoverTree.cpp include/CoverTree.h src/MPITimer.cpp include/MPITimer.h src/read_args.cpp include/read_args.h
-	$(MPICXX) -o dist_benchmark_nng $(INCLUDES) $(MPIFLAGS) programs/dist_benchmark_nng.cpp src/CoverTree.cpp src/MPITimer.cpp src/read_args.cpp
-
-dist_greedy_benchmark: programs/dist_greedy_benchmark.cpp src/MPITimer.cpp include/MPITimer.h src/read_args.cpp include/read_args.h
-	$(MPICXX) -o dist_greedy_benchmark $(INCLUDES) $(MPIFLAGS) programs/dist_greedy_benchmark.cpp src/MPITimer.cpp src/read_args.cpp
+epsilon_graph: programs/epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/Point.cpp include/Point.h src/read_args.cpp include/read_args.h
+	$(CXX) -o epsilon_graph $(INCLUDES) $(MPIFLAGS) programs/epsilon_graph.cpp src/CoverTree.cpp src/Point.cpp src/read_args.cpp
 
 clean:
-	rm -rf *.dSYM *.bin *.fvecs dist_benchmark_nng dist_greedy_benchmark
+	rm -rf *.dSYM *.bin *.fvecs epsilon_graph
