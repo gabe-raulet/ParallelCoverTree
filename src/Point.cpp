@@ -4,6 +4,7 @@
 Point::Point() { data[0] = data[1] = 0; }
 Point::Point(const float *p) { data[0] = p[0], data[1] = p[1]; }
 Point::Point(const Point& rhs) : Point(rhs.data) {}
+Point::Point(const pair<float, float>& p) { data[0] = p.first, data[1] = p.second; }
 
 Point& Point::operator=(const Point& rhs)
 {

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
+#include <utility>
 
 using namespace std;
 
@@ -17,6 +18,7 @@ public:
     Point();
     Point(const float *p);
     Point(const Point& rhs);
+    Point(const pair<float, float>& p);
 
     Point& operator=(const Point& rhs);
 
