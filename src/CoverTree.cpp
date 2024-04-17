@@ -1,17 +1,16 @@
 #include "CoverTree.h"
 #include "Point.h"
-#include <list>
 #include <limits>
 #include <list>
 #include <unordered_set>
+#include <unordered_map>
 #include <cassert>
 #include <stdio.h>
 
 CoverTree::CoverTree(const vector<Point>& points, double base)
     : max_radius(-1), base(base), points(points)
 {
-    set_max_radius();
-    build_tree();
+    build_tree_hub_loop();
 }
 
 vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
@@ -56,6 +55,35 @@ vector<vector<int64_t>> CoverTree::build_epsilon_graph(double radius) const
     return graph;
 }
 
+unordered_map<int64_t, int64_t> find_argmaxes(const vector<double>& dists, const vector<int64_t>& hub_vtx_ids, const unordered_map<int64_t, vector<int64_t>>& hub_chains)
+{
+    unordered_map<int64_t, pair<int64_t, double>> argmaxes;
+    transform(hub_chains.begin(), hub_chains.end(), inserter(argmaxes, argmaxes.end()),
+              [](auto pair) { return make_pair(pair.first, make_pair(-1, -1.0)); });
+
+    for (int64_t i = 0; i < dists.size(); ++i)
+    {
+        int64_t hub_id = hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            auto& it = argmaxes.find(hub_id)->second;
+
+            if (dists[i] > it.second)
+            {
+                it.first = i;
+                it.second = dists[i];
+            }
+        }
+    }
+
+    unordered_map<int64_t, int64_t> argmax_ids;
+    transform(argmaxes.begin(), argmaxes.end(), inserter(argmax_ids, argmax_ids.end()),
+              [](auto pair) { return make_pair(pair.first, pair.second.first); });
+
+    return argmax_ids;
+}
+
 /*
  * CoverTree::set_max_radius() determines the maximum distance between the
  * root point (the first point in the data by convention) and all other
@@ -73,8 +101,10 @@ void CoverTree::set_max_radius()
     }
 }
 
-void CoverTree::build_tree()
+void CoverTree::build_tree_hub_loop()
 {
+    set_max_radius();
+
     // list of tasks, each of which is identified by a (1) unexpanded vertex (newly constructed)
     // and (2) list of its descendants.
     list<tuple<int64_t, vector<int64_t>>> tasks;
@@ -112,6 +142,120 @@ void CoverTree::build_tree()
         {
             int64_t vertex_id = add_vertex(child_partitions[i].front(), parent_id);
             tasks.emplace_back(vertex_id, child_partitions[i]);
+        }
+    }
+}
+
+void CoverTree::build_tree_point_loop()
+{
+    vector<double> dists(num_points());
+    vector<int64_t> hub_vtx_ids(num_points());
+    vector<int64_t> hub_pt_ids(num_points());
+
+    int64_t root_id = add_vertex(0, -1);
+
+    for (int64_t i = 0; i < num_points(); ++i)
+    {
+        dists[i] = get_vertex_point(root_id).distance(get_point(i));
+        hub_vtx_ids[i] = root_id;
+        hub_pt_ids[i] = pt[root_id];
+        max_radius = max(dists[i], max_radius);
+    }
+
+    unordered_map<int64_t, vector<int64_t>> hub_chains;
+    hub_chains.insert({root_id, {pt[root_id]}});
+
+    while (hub_chains.size() != 0)
+    {
+        unordered_map<int64_t, int64_t> argmaxes = find_argmaxes(dists, hub_vtx_ids, hub_chains);
+
+        int64_t hub_id, farthest_pt_id;
+        unordered_set<int64_t> stopped_chains, leaf_chains;
+
+        for (auto it = argmaxes.begin(); it != argmaxes.end(); ++it)
+        {
+            tie(hub_id, farthest_pt_id) = *it;
+            double farthest_dist = dists[farthest_pt_id] / max_radius;
+
+            if (farthest_dist == 0)
+            {
+                const vector<int64_t>& leaves = hub_chains.find(hub_id)->second;
+
+                if (leaves.size() != 1)
+                    for (int64_t leaf_pt : leaves)
+                        add_vertex(leaf_pt, hub_id);
+
+                hub_chains.erase(hub_id);
+                leaf_chains.insert(hub_id);
+            }
+            else if (farthest_dist <= (vertex_ball_radius(hub_id) / base))
+            {
+                stopped_chains.insert(hub_id);
+            }
+            else
+            {
+                hub_chains.find(hub_id)->second.push_back(farthest_pt_id);
+            }
+        }
+
+        if (leaf_chains.size() != 0)
+        {
+            for (int64_t i = 0; i < num_points(); ++i)
+            {
+                int64_t hub_id = hub_vtx_ids[i];
+
+                if (leaf_chains.find(hub_id) != leaf_chains.end())
+                {
+                    hub_vtx_ids[i] = hub_pt_ids[i] = -1;
+                    dists[i] = 0;
+                }
+            }
+        }
+
+        if (stopped_chains.size() != 0)
+        {
+            unordered_map<int64_t, int64_t> hub_pt_id_updates;
+
+            for (int64_t hub_id : stopped_chains)
+            {
+                const vector<int64_t>& chain = hub_chains.find(hub_id)->second;
+
+                for (int64_t pt_id : chain)
+                {
+                    int64_t vtx_id = add_vertex(pt_id, hub_id);
+                    hub_chains.insert({vtx_id, {pt_id}});
+                    hub_pt_id_updates.insert({pt_id, vtx_id});
+                }
+
+                hub_chains.erase(hub_id);
+            }
+
+            for (int64_t i = 0; i < num_points(); ++i)
+            {
+                int64_t closest_pt_id = hub_pt_ids[i];
+                auto it = hub_pt_id_updates.find(closest_pt_id);
+
+                if (it != hub_pt_id_updates.end())
+                    hub_vtx_ids[i] = it->second;
+            }
+        }
+
+        for (int64_t i = 0; i < num_points(); ++i)
+        {
+            int64_t hub_id = hub_vtx_ids[i];
+
+            if (hub_id >= 0)
+            {
+                int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
+                double lastdist = dists[i];
+                double curdist = get_point(i).distance(get_point(last_chain_pt_id));
+
+                if (curdist <= lastdist)
+                {
+                    dists[i] = curdist;
+                    hub_pt_ids[i] = last_chain_pt_id;
+                }
+            }
         }
     }
 }

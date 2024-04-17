@@ -30,7 +30,8 @@ private:
     vector<int64_t> pt, level;
     vector<vector<int64_t>> children;
 
-    void build_tree();
+    void build_tree_hub_loop();
+    void build_tree_point_loop();
     void set_max_radius();
 
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
