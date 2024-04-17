@@ -128,6 +128,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Graph construction was NOT successful\n");
     }
 
+    double speedup = (bf_time + 1e-16) / (graph_time + tree_time + 1e-16);
+    fprintf(stderr, "Cover tree vs. brute force graph construction: %.2fx %s\n", speedup <= 1.? 1./speedup : speedup, speedup <= 1.? "slowdown" : "speedup");
+
     return 0;
 }
 
