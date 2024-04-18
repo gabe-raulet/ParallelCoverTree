@@ -4,13 +4,15 @@
 #include <list>
 #include <unordered_set>
 #include <unordered_map>
+#include <iomanip>
 #include <cassert>
 #include <stdio.h>
 
 CoverTree::CoverTree(const vector<Point>& points, double base)
     : max_radius(-1), base(base), points(points)
 {
-    build_tree_hub_loop();
+    build_tree_point_loop();
+    //build_tree_hub_loop();
 }
 
 vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
@@ -179,11 +181,28 @@ void CoverTree::build_tree_point_loop()
 
             if (farthest_dist == 0)
             {
-                const vector<int64_t>& leaves = hub_chains.find(hub_id)->second;
+                for (int64_t i = 0; i < num_points(); ++i)
+                    if (hub_id == hub_vtx_ids[i])
+                        add_vertex(i, hub_id);
 
-                if (leaves.size() != 1)
-                    for (int64_t leaf_pt : leaves)
-                        add_vertex(leaf_pt, hub_id);
+                /*
+                 * TODO: The above loop is pretty inefficient here, but temporarily necessary to deal
+                 * with the problem of duplicate points. If there were no duplicate points, then
+                 * we could get away with the following:
+                 *
+                 * """
+                 * const vector<int64_t>& leaves = hub_chains.find(hub_id)->second;
+                 *
+                 * if (leaves.size() != 1)
+                 *     for (int64_t leaf_pt : leaves)
+                 *         add_vertex(leaf_pt, hub_id);
+                 * """
+                 *
+                 * However, because there may be duplicate points we need to make sure that
+                 * we are not neglecting the possibility that all the hub points are identical
+                 * to the hub parent vertex, in which case the just mentioned alternative
+                 * solution would miss all the duplicates.
+                 */
 
                 hub_chains.erase(hub_id);
                 leaf_chains.insert(hub_id);
@@ -410,8 +429,9 @@ void CoverTree::write_gml(const char *filename) const
 
     for (int64_t id = 0; id < num_vertices(); ++id)
     {
-        fprintf(f, "\tnode\n\t[\n\t\tid %lld\n\t\tpt %lld\n\t\tlevel %lld\n\t\tcover %.3f\n\t\trepr %s\n\t]\n",
-                id, pt[id], level[id], vertex_ball_radius(id), points[pt[id]].repr().c_str());
+        const Point& point = get_vertex_point(id);
+        fprintf(f, "\tnode\n\t[\n\t\tid %lld\n\t\tpt %lld\n\t\tlevel %lld\n\t\tcover %.3f\n\t]\n",
+                id, pt[id], level[id], vertex_ball_radius(id));
     }
 
     vector<int64_t> stack = {0};
