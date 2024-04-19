@@ -1,6 +1,7 @@
 #include "Point.h"
 #include "CoverTree.h"
 #include "read_args.h"
+#include "version.h"
 #include <iostream>
 #include <chrono>
 #include <assert.h>
@@ -18,6 +19,9 @@ struct MyTimer
 using mytimer = MyTimer<double>;
 
 bool graphs_equal(const vector<vector<int64_t>> g1, const vector<vector<int64_t>> g2);
+
+string return_current_time_and_date();
+string program_str(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
@@ -51,6 +55,8 @@ int main(int argc, char *argv[])
         uniform_int_distribution<int> dis{numeric_limits<int>::min(), numeric_limits<int>::max()};
         seed = dis(gen);
     }
+
+    fprintf(stderr, "program: %s\ncommit: " GIT_COMMIT "\ndate and time: %s\n\n", program_str(argc, argv).c_str(), return_current_time_and_date().c_str());
 
     /*
      * Construct random point set
@@ -91,7 +97,7 @@ int main(int argc, char *argv[])
     int64_t n_edges = 0;
     for_each(epsilon_graph.begin(), epsilon_graph.end(), [&](const auto& item) { n_edges += item.size(); });
 
-    fprintf(stderr, "[time=%.4f] :: (build_graph) [num_vertices=%lu,num_edges=%lld,avg_deg=%.4f]\n", graph_time, epsilon_graph.size(), n_edges, (n_edges+0.0)/epsilon_graph.size());
+    fprintf(stderr, "[time=%.4f] :: (build_graph) [num_vertices=%lu,num_edges=%lld,avg_deg=%.4f,radius=%.3f]\n", graph_time, epsilon_graph.size(), n_edges, (n_edges+0.0)/epsilon_graph.size(), radius);
     fprintf(stderr, "[time=%.4f] :: (cover_tree_graph)\n", graph_time + tree_time);
 
     /*
@@ -114,6 +120,7 @@ int main(int argc, char *argv[])
     for_each(graph.begin(), graph.end(), [&](const auto& item) { m += item.size(); });
 
     fprintf(stderr, "[time=%.4f] :: (brute_force_graph)\n", bf_time);
+    fprintf(stderr, "\n");
 
     /*
      * Check that cover tree graph equals brute force graph
@@ -151,3 +158,28 @@ bool graphs_equal(const vector<vector<int64_t>> g1, const vector<vector<int64_t>
     return true;
 }
 
+string program_str(int argc, char *argv[])
+{
+    stringstream ss;
+
+    for (int i = 0; i < argc; ++i)
+    {
+        ss << argv[i] << " ";
+    }
+
+    return ss.str();
+}
+
+string return_current_time_and_date()
+{
+    /*
+     * Shamelessly copied from here: https://stackoverflow.com/questions/17223096/outputting-date-and-time-in-c-using-stdchrono
+     */
+
+    auto now = chrono::system_clock::now();
+    auto in_time_t = chrono::system_clock::to_time_t(now);
+
+    stringstream ss;
+    ss << put_time(localtime(&in_time_t), "%Y/%m/%d %X");
+    return ss.str();
+}

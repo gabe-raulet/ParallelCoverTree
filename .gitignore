@@ -4,3 +4,4 @@
 *.bin
 *.swp
 epsilon_graph
+version.h
