@@ -2,6 +2,10 @@
 #include "Point.h"
 #include "MyTimer.h"
 #include <iostream>
+#include <sstream>
+#include <algorithm>
+#include <tuple>
+#include <numeric>
 #include <limits>
 #include <unordered_set>
 #include <iomanip>
@@ -43,6 +47,8 @@ double SGTree::vertex_ball_radius(int64_t vertex_id) const
 
 void SGTree::initialize_root_hub()
 {
+    auto t1 = mytimer::clock::now();
+
     dists.resize(num_points());
     hub_vtx_ids.resize(num_points());
     hub_pt_ids.resize(num_points());
@@ -58,10 +64,16 @@ void SGTree::initialize_root_hub()
     }
 
     hub_chains.insert({root_id, {pt[root_id]}});
+
+    auto t2 = mytimer::clock::now();
+    double t = mytimer::duration(t2-t1).count();
+    initialize_root_hub_times.push_back(t);
 }
 
 void SGTree::compute_farthest_hub_pts()
 {
+    auto t1 = mytimer::clock::now();
+
     unordered_map<int64_t, pair<int64_t, double>> argmaxes;
     transform(hub_chains.begin(), hub_chains.end(), inserter(argmaxes, argmaxes.end()),
               [](auto pair) { return make_pair(pair.first, make_pair(-1, -1.0)); });
@@ -85,10 +97,16 @@ void SGTree::compute_farthest_hub_pts()
     farthest_hub_pts.clear();
     transform(argmaxes.begin(), argmaxes.end(), inserter(farthest_hub_pts, farthest_hub_pts.end()),
               [](auto pair) { return make_pair(pair.first, pair.second.first); });
+
+    auto t2 = mytimer::clock::now();
+    double t = mytimer::duration(t2-t1).count();
+    compute_farthest_hub_pts_times.push_back(t);
 }
 
 void SGTree::update_hub_chains()
 {
+    auto t1 = mytimer::clock::now();
+
     int64_t hub_id, farthest_pt_id;
     split_chains.clear(), leaf_chains.clear();
 
@@ -115,10 +133,16 @@ void SGTree::update_hub_chains()
             hub_chains.find(hub_id)->second.push_back(farthest_pt_id);
         }
     }
+
+    auto t2 = mytimer::clock::now();
+    double t = mytimer::duration(t2-t1).count();
+    update_hub_chains_times.push_back(t);
 }
 
 void SGTree::process_leaf_chains()
 {
+    auto t1 = mytimer::clock::now();
+
     if (!leaf_chains.empty())
     {
         for (int64_t i = 0; i < num_points(); ++i)
@@ -132,10 +156,16 @@ void SGTree::process_leaf_chains()
             }
         }
     }
+
+    auto t2 = mytimer::clock::now();
+    double t = mytimer::duration(t2-t1).count();
+    process_leaf_chains_times.push_back(t);
 }
 
 void SGTree::process_split_chains()
 {
+    auto t1 = mytimer::clock::now();
+
     if (!split_chains.empty())
     {
         unordered_map<int64_t, int64_t> hub_pt_id_updates;
@@ -163,10 +193,16 @@ void SGTree::process_split_chains()
                 hub_vtx_ids[i] = it->second;
         }
     }
+
+    auto t2 = mytimer::clock::now();
+    double t = mytimer::duration(t2-t1).count();
+    process_split_chains_times.push_back(t);
 }
 
 void SGTree::update_dists_and_pointers()
 {
+    auto t1 = mytimer::clock::now();
+
     for (int64_t i = 0; i < num_points(); ++i)
     {
         int64_t hub_id = hub_vtx_ids[i];
@@ -184,6 +220,10 @@ void SGTree::update_dists_and_pointers()
             }
         }
     }
+
+    auto t2 = mytimer::clock::now();
+    double t = mytimer::duration(t2-t1).count();
+    update_dists_and_pointers_times.push_back(t);
 }
 
 void SGTree::build_tree()
@@ -198,4 +238,48 @@ void SGTree::build_tree()
         process_split_chains();
         update_dists_and_pointers();
     }
+}
+
+tuple<double, double, double> get_stats(const vector<double>& times)
+{
+    double tot = accumulate(times.cbegin(), times.cend(), 0.0, plus<double>());
+    double avg = tot / static_cast<double>(times.size());
+
+    vector<double> devs;
+    devs.reserve(times.size());
+
+    transform(times.cbegin(), times.cend(), back_inserter(devs), [&avg](double val) { return (val-avg) * (val-avg); });
+    double var = accumulate(devs.cbegin(), devs.cend(), 0.0, plus<double>()) / static_cast<double>(devs.size());
+
+    return {tot, avg, sqrt(var)};
+}
+
+void SGTree::print_timing_results() const
+{
+    double tot, avg, stddev;
+
+    tie(tot, avg, stddev) = get_stats(initialize_root_hub_times);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (initialize_root_hub)\n", tot, avg, stddev);
+
+    tie(tot, avg, stddev) = get_stats(compute_farthest_hub_pts_times);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (compute_farthest_hub_pts)\n", tot, avg, stddev);
+
+    tie(tot, avg, stddev) = get_stats(update_hub_chains_times);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (update_hub_chains)\n", tot, avg, stddev);
+
+    tie(tot, avg, stddev) = get_stats(process_leaf_chains_times);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (process_leaf_chains)\n", tot, avg, stddev);
+
+    tie(tot, avg, stddev) = get_stats(process_split_chains_times);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (process_split_chains)\n", tot, avg, stddev);
+
+    tie(tot, avg, stddev) = get_stats(update_dists_and_pointers_times);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (update_dists_and_pointers)\n", tot, avg, stddev);
+
+    //vector<double> initialize_root_hub_times;
+    //vector<double> compute_farthest_hub_pts_times;
+    //vector<double> update_hub_chains_times;
+    //vector<double> process_leaf_chains_times;
+    //vector<double> process_split_chains_times;
+    //vector<double> update_dists_and_pointers_times;
 }

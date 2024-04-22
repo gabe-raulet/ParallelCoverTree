@@ -22,6 +22,8 @@ public:
     Point get_point(int64_t point_id) const;
     Point get_vertex_point(int64_t vertex_id) const;
 
+    void print_timing_results() const;
+
 private:
     double max_radius, base;
     vector<Point> points;
@@ -47,6 +49,13 @@ private:
     void process_leaf_chains();
     void process_split_chains();
     void update_dists_and_pointers();
+
+    vector<double> initialize_root_hub_times;
+    vector<double> compute_farthest_hub_pts_times;
+    vector<double> update_hub_chains_times;
+    vector<double> process_leaf_chains_times;
+    vector<double> process_split_chains_times;
+    vector<double> update_dists_and_pointers_times;
 };
 
 #endif

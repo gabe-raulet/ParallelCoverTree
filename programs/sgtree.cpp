@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
 
     fprintf(stderr, "[time=%.4f] :: (build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", tree_time, tree.num_vertices(), tree.num_levels(), base);
 
+    tree.print_timing_results();
+
     return 0;
 }
 
