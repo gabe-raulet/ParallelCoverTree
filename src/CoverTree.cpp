@@ -8,33 +8,30 @@
 #include <cassert>
 #include <stdio.h>
 
-CoverTree::CoverTree(const vector<Point>& points, double base)
-    : max_radius(-1), base(base), points(points)
-{
-    build_tree_point_loop();
-    //build_tree_hub_loop();
-}
+CoverTree::CoverTree(const vector<Point>& points, double base) : max_radius(-1), base(base), points(points) {}
+
+int64_t CoverTree::num_points() const { return points.size(); }
+int64_t CoverTree::num_vertices() const { return pt.size(); }
+int64_t CoverTree::num_levels() const { return *max_element(level.begin(), level.end()) + 1; }
+
+Point CoverTree::get_point(int64_t point_id) const { return points[point_id]; }
+Point CoverTree::get_vertex_point(int64_t vertex_id) const { return points[pt[vertex_id]]; }
 
 vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
 {
-    unordered_set<int64_t> idset; // point ids of points within a distance of @radius of @query
-    vector<int64_t> stack = {0}; // start exploring tree from root (point id 0)
+    unordered_set<int64_t> idset;
+    vector<int64_t> stack = {0};
 
     while (stack.size() != 0)
     {
-        // get next point @u
         int64_t u = stack.back(); stack.pop_back();
         vector<int64_t> mychildren = children[u];
 
-        // go through children of @u
         for (int64_t v : mychildren)
         {
-            // if child of @u is within a distance of @radius and within a distance
-            // the covering distance of @u then we need to explore its children
             if (query.distance(get_vertex_point(v)) <= radius + max_radius*vertex_ball_radius(v))
                 stack.push_back(v);
 
-            // add @radius-neighbor of @u to set
             if (query.distance(get_vertex_point(v)) <= radius)
                 idset.insert(pt[v]);
         }
@@ -45,12 +42,10 @@ vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
 
 vector<vector<int64_t>> CoverTree::build_epsilon_graph(double radius) const
 {
-    // graph adjacency list (initialized empty)
     vector<vector<int64_t>> graph(num_points());
 
     for (int64_t u = 0; u < num_points(); ++u)
     {
-        // compute @radius-neighbors of @u
         graph[u] = radii_query(get_point(u), radius);
     }
 
@@ -86,17 +81,8 @@ unordered_map<int64_t, int64_t> find_argmaxes(const vector<double>& dists, const
     return argmax_ids;
 }
 
-/*
- * CoverTree::set_max_radius() determines the maximum distance between the
- * root point (the first point in the data by convention) and all other
- * points. This is used to normalize distance calculations so that the
- * maximum normalized distance between the root vertex and all other vertices
- * in the tree is 1.
- */
 void CoverTree::set_max_radius()
 {
-    // to normalize distances, find distance of farthest point from
-    // root (vertex index 0)
     for (const Point& point : points)
     {
         max_radius = max(max_radius, points.front().distance(point));
@@ -184,25 +170,6 @@ void CoverTree::build_tree_point_loop()
                 for (int64_t i = 0; i < num_points(); ++i)
                     if (hub_id == hub_vtx_ids[i])
                         add_vertex(i, hub_id);
-
-                /*
-                 * TODO: The above loop is pretty inefficient here, but temporarily necessary to deal
-                 * with the problem of duplicate points. If there were no duplicate points, then
-                 * we could get away with the following:
-                 *
-                 * """
-                 * const vector<int64_t>& leaves = hub_chains.find(hub_id)->second;
-                 *
-                 * if (leaves.size() != 1)
-                 *     for (int64_t leaf_pt : leaves)
-                 *         add_vertex(leaf_pt, hub_id);
-                 * """
-                 *
-                 * However, because there may be duplicate points we need to make sure that
-                 * we are not neglecting the possibility that all the hub points are identical
-                 * to the hub parent vertex, in which case the just mentioned alternative
-                 * solution would miss all the duplicates.
-                 */
 
                 hub_chains.erase(hub_id);
                 leaf_chains.insert(hub_id);
@@ -381,41 +348,25 @@ vector<vector<int64_t>> CoverTree::compute_child_partitions(int64_t parent_id, c
     return child_partitions;
 }
 
-/*
- * CoverTree::add_vertex(@point_id, @parent_id) adds a vertex to
- * the tree whose associated point has point id @point_id and whose
- * parent vertex has vertex id @parent_id.
- */
 int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
 {
-    int64_t vertex_level; // level of new vertex
-    int64_t vertex_id = pt.size(); // vertex id of new vertex
+    int64_t vertex_level;
+    int64_t vertex_id = pt.size();
 
-    pt.push_back(point_id); // pt[vertex_id] = point_id
-    children.emplace_back(); // new vertex initialized with no children
+    pt.push_back(point_id);
+    children.emplace_back();
 
-    if (parent_id >= 0) // @vertex_id is not the root vertex
+    if (parent_id >= 0)
     {
         vertex_level = level[parent_id] + 1;
         children[parent_id].push_back(vertex_id);
     }
-    else
-    {
-        vertex_level = 0;
-    }
+    else vertex_level = 0;
 
     level.push_back(vertex_level);
-
     return vertex_id;
 }
 
-/*
- * CoverTree::vertex_ball_radius(@vertex_id) returns the radius
- * of the coverage for the children of @vertex_id.
- *
- * For a vertex on level k, its children must all be within a distance
- * of 1 / 2^k.
- */
 double CoverTree::vertex_ball_radius(int64_t vertex_id) const
 {
     return pow(base, -1. * level[vertex_id]);
