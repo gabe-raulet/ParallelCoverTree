@@ -122,7 +122,7 @@ void SGTree::update_hub_chains()
         }
         else if (farthest_dist <= (vertex_ball_radius(hub_id) / base))
         {
-            split_chains.insert(hub_id);
+            split_chains.push_back(hub_id);
         }
         else
         {
