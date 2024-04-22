@@ -78,7 +78,7 @@ void SGTree::compute_farthest_hub_pts()
     transform(hub_chains.begin(), hub_chains.end(), inserter(argmaxes, argmaxes.end()),
               [](auto pair) { return make_pair(pair.first, make_pair(-1, -1.0)); });
 
-    for (int64_t i = 0; i < dists.size(); ++i)
+    for (int64_t i = 0; i < num_points(); ++i)
     {
         int64_t hub_id = hub_vtx_ids[i];
 
@@ -253,30 +253,31 @@ tuple<double, double, double> get_stats(const vector<double>& times)
 
 void SGTree::print_timing_results() const
 {
+    double overall = 0.0;
+    overall += std::get<0>(get_stats(initialize_root_hub_times));
+    overall += std::get<0>(get_stats(compute_farthest_hub_pts_times));
+    overall += std::get<0>(get_stats(update_hub_chains_times));
+    overall += std::get<0>(get_stats(process_leaf_chains_times));
+    overall += std::get<0>(get_stats(process_split_chains_times));
+    overall += std::get<0>(get_stats(update_dists_and_pointers_times));
+
     double tot, avg, stddev;
 
     tie(tot, avg, stddev) = get_stats(initialize_root_hub_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (initialize_root_hub)\n", tot, avg, stddev);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (initialize_root_hub)\n", tot, avg, stddev, 100.0*(tot/overall));
 
     tie(tot, avg, stddev) = get_stats(compute_farthest_hub_pts_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (compute_farthest_hub_pts)\n", tot, avg, stddev);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (compute_farthest_hub_pts)\n", tot, avg, stddev, 100.0*(tot/overall));
 
     tie(tot, avg, stddev) = get_stats(update_hub_chains_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (update_hub_chains)\n", tot, avg, stddev);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (update_hub_chains)\n", tot, avg, stddev, 100.0*(tot/overall));
 
     tie(tot, avg, stddev) = get_stats(process_leaf_chains_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (process_leaf_chains)\n", tot, avg, stddev);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (process_leaf_chains)\n", tot, avg, stddev, 100.0*(tot/overall));
 
     tie(tot, avg, stddev) = get_stats(process_split_chains_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (process_split_chains)\n", tot, avg, stddev);
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (process_split_chains)\n", tot, avg, stddev, 100.0*(tot/overall));
 
     tie(tot, avg, stddev) = get_stats(update_dists_and_pointers_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f] :: (update_dists_and_pointers)\n", tot, avg, stddev);
-
-    //vector<double> initialize_root_hub_times;
-    //vector<double> compute_farthest_hub_pts_times;
-    //vector<double> update_hub_chains_times;
-    //vector<double> process_leaf_chains_times;
-    //vector<double> process_split_chains_times;
-    //vector<double> update_dists_and_pointers_times;
+    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (update_dists_and_pointers)\n", tot, avg, stddev, 100.0*(tot/overall));
 }
