@@ -181,29 +181,6 @@ void CoverTree::build_tree_point_loop()
 
             if (farthest_dist == 0)
             {
-                for (int64_t i = 0; i < num_points(); ++i)
-                    if (hub_id == hub_vtx_ids[i])
-                        add_vertex(i, hub_id);
-
-                /*
-                 * TODO: The above loop is pretty inefficient here, but temporarily necessary to deal
-                 * with the problem of duplicate points. If there were no duplicate points, then
-                 * we could get away with the following:
-                 *
-                 * """
-                 * const vector<int64_t>& leaves = hub_chains.find(hub_id)->second;
-                 *
-                 * if (leaves.size() != 1)
-                 *     for (int64_t leaf_pt : leaves)
-                 *         add_vertex(leaf_pt, hub_id);
-                 * """
-                 *
-                 * However, because there may be duplicate points we need to make sure that
-                 * we are not neglecting the possibility that all the hub points are identical
-                 * to the hub parent vertex, in which case the just mentioned alternative
-                 * solution would miss all the duplicates.
-                 */
-
                 hub_chains.erase(hub_id);
                 leaf_chains.insert(hub_id);
             }
@@ -225,6 +202,7 @@ void CoverTree::build_tree_point_loop()
 
                 if (leaf_chains.find(hub_id) != leaf_chains.end())
                 {
+                    add_vertex(i, hub_id);
                     hub_vtx_ids[i] = hub_pt_ids[i] = -1;
                     dists[i] = 0;
                 }
