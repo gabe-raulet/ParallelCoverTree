@@ -117,10 +117,6 @@ void SGTree::update_hub_chains()
 
         if (farthest_dist == 0)
         {
-            for (int64_t i = 0; i < num_points(); ++i)
-                if (hub_id == hub_vtx_ids[i])
-                    add_vertex(i, hub_id);
-
             hub_chains.erase(hub_id);
             leaf_chains.insert(hub_id);
         }
@@ -151,6 +147,7 @@ void SGTree::process_leaf_chains()
 
             if (leaf_chains.find(hub_id) != leaf_chains.end())
             {
+                add_vertex(i, hub_id);
                 hub_vtx_ids[i] = hub_pt_ids[i] = -1;
                 dists[i] = 0;
             }
