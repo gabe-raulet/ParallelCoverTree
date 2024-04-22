@@ -69,7 +69,6 @@ int main(int argc, char *argv[])
     auto tree_start = mytimer::clock::now();
 
     CoverTree tree(points, base);
-    tree.build_tree_point_loop();
 
     auto tree_end = mytimer::clock::now();
     double tree_time = mytimer::duration(tree_end - tree_start).count();
