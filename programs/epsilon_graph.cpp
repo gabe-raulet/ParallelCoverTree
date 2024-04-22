@@ -1,5 +1,6 @@
 #include "Point.h"
 #include "CoverTree.h"
+#include "MyTimer.h"
 #include "read_args.h"
 #include "version.h"
 #include <iostream>
@@ -8,15 +9,6 @@
 #include <stdio.h>
 
 using namespace std;
-
-template <class T>
-struct MyTimer
-{
-    using clock = chrono::high_resolution_clock;
-    using duration = chrono::duration<T>;
-};
-
-using mytimer = MyTimer<double>;
 
 bool graphs_equal(const vector<vector<int64_t>> g1, const vector<vector<int64_t>> g2);
 

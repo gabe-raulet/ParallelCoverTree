@@ -30,7 +30,7 @@ install: epsilon_graph
 version.h:
 	@echo "#define GIT_COMMIT \"$(shell git describe --always --dirty --match 'NOT A TAG')\"" > include/version.h
 
-epsilon_graph: programs/epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/Point.cpp include/Point.h src/read_args.cpp include/read_args.h version.h
+epsilon_graph: programs/epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
 	$(CXX) -o epsilon_graph $(INCLUDES) $(MPIFLAGS) programs/epsilon_graph.cpp src/CoverTree.cpp src/Point.cpp src/read_args.cpp
 
 clean:
