@@ -166,6 +166,7 @@ void SGTree::process_split_chains()
     if (!split_chains.empty())
     {
         unordered_map<int64_t, int64_t> hub_pt_id_updates;
+        vector<pair<int64_t, int64_t>> new_hubs;
 
         for (int64_t hub_id : split_chains)
         {
@@ -173,12 +174,17 @@ void SGTree::process_split_chains()
 
             for (int64_t pt_id : chain)
             {
-                int64_t vtx_id = add_vertex(pt_id, hub_id);
-                hub_chains.insert({vtx_id, {pt_id}});
-                hub_pt_id_updates.insert({pt_id, vtx_id});
+                new_hubs.emplace_back(pt_id, hub_id);
             }
 
             hub_chains.erase(hub_id);
+        }
+
+        for (const auto& hub_pair : new_hubs)
+        {
+            int64_t vtx_id = add_vertex(hub_pair.first, hub_pair.second);
+            hub_chains.insert({vtx_id, {hub_pair.first}});
+            hub_pt_id_updates.insert({hub_pair.first, vtx_id});
         }
 
         for (int64_t i = 0; i < num_points(); ++i)
