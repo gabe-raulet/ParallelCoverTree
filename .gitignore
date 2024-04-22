@@ -4,4 +4,5 @@
 *.bin
 *.swp
 epsilon_graph
+sgtree
 version.h

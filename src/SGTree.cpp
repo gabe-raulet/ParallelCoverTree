@@ -90,7 +90,7 @@ void SGTree::compute_farthest_hub_pts()
 void SGTree::update_hub_chains()
 {
     int64_t hub_id, farthest_pt_id;
-    stopped_chains.clear(), leaf_chains.clear();
+    split_chains.clear(), leaf_chains.clear();
 
     for (auto it = farthest_hub_pts.begin(); it != farthest_hub_pts.end(); ++it)
     {
@@ -108,7 +108,7 @@ void SGTree::update_hub_chains()
         }
         else if (farthest_dist <= (vertex_ball_radius(hub_id) / base))
         {
-            stopped_chains.insert(hub_id);
+            split_chains.insert(hub_id);
         }
         else
         {
@@ -136,11 +136,11 @@ void SGTree::process_leaf_chains()
 
 void SGTree::process_split_chains()
 {
-    if (!stopped_chains.empty())
+    if (!split_chains.empty())
     {
         unordered_map<int64_t, int64_t> hub_pt_id_updates;
 
-        for (int64_t hub_id : stopped_chains)
+        for (int64_t hub_id : split_chains)
         {
             const vector<int64_t>& chain = hub_chains.find(hub_id)->second;
 
