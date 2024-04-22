@@ -167,13 +167,22 @@ void SGTree::process_split_chains()
     {
         unordered_map<int64_t, int64_t> hub_pt_id_updates;
         vector<int64_t> new_hub_pts, new_hub_ids;
+        vector<vector<int64_t>*> chain_ptrs(split_chains.size(), nullptr);
+        transform(split_chains.begin(), split_chains.end(), chain_ptrs.begin(),
+                [&](int64_t hub_id) { return &hub_chains.find(hub_id)->second; });
 
-        for (int64_t hub_id : split_chains)
+        int64_t num_new_hub_pts = 0;
+        for (auto& chain_ptr : chain_ptrs)
+            num_new_hub_pts += chain_ptr->size();
+
+        new_hub_pts.reserve(num_new_hub_pts);
+        new_hub_ids.reserve(num_new_hub_pts);
+
+        for (int64_t i = 0; i < chain_ptrs.size(); ++i)
         {
-            const vector<int64_t>& chain = hub_chains.find(hub_id)->second;
-            new_hub_pts.insert(new_hub_pts.end(), chain.cbegin(), chain.cend());
-            new_hub_ids.insert(new_hub_ids.end(), chain.size(), hub_id);
-            hub_chains.erase(hub_id);
+            new_hub_pts.insert(new_hub_pts.end(), chain_ptrs[i]->cbegin(), chain_ptrs[i]->cend());
+            new_hub_ids.insert(new_hub_ids.end(), chain_ptrs[i]->size(), split_chains[i]);
+            hub_chains.erase(split_chains[i]);
         }
 
         for (int64_t i = 0; i < new_hub_pts.size(); ++i)
