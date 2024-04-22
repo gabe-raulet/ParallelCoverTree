@@ -1,5 +1,9 @@
 #include "CoverTree.h"
 #include "Point.h"
+#include "MyTimer.h"
+#include <iostream>
+#include <sstream>
+#include <string>
 #include <limits>
 #include <list>
 #include <unordered_set>
@@ -136,6 +140,8 @@ void CoverTree::build_tree_hub_loop()
 
 void CoverTree::build_tree_point_loop()
 {
+    auto t1 = mytimer::clock::now();
+
     vector<double> dists(num_points());
     vector<int64_t> hub_vtx_ids(num_points());
     vector<int64_t> hub_pt_ids(num_points());
@@ -153,13 +159,31 @@ void CoverTree::build_tree_point_loop()
     unordered_map<int64_t, vector<int64_t>> hub_chains;
     hub_chains.insert({root_id, {pt[root_id]}});
 
+    auto t2 = mytimer::clock::now();
+    double hub_init_time = mytimer::duration(t2-t1).count();
+    printf("Initialized root vertex hub with %lld points in %.4f seconds\n", num_points(), hub_init_time);
+
+    int64_t iter = 0;
+    int64_t active_pts = num_points();
+
     while (hub_chains.size() != 0)
     {
+        printf("Starting iteration %lld with %lld active hubs and %lld active points\n", ++iter, hub_chains.size(), active_pts);
+
+        t1 = mytimer::clock::now();
         unordered_map<int64_t, int64_t> argmaxes = find_argmaxes(dists, hub_vtx_ids, hub_chains);
+        t2 = mytimer::clock::now();
+        double find_argmaxes_time = mytimer::duration(t2-t1).count();
+        printf("Computed %lld argmaxes in %.4f seconds\n", argmaxes.size(), find_argmaxes_time);
 
         int64_t hub_id, farthest_pt_id;
         unordered_set<int64_t> stopped_chains, leaf_chains;
 
+        int64_t to_remove = 0;
+        int64_t to_stop = 0;
+        int64_t to_extend = 0;
+
+        t1 = mytimer::clock::now();
         for (auto it = argmaxes.begin(); it != argmaxes.end(); ++it)
         {
             tie(hub_id, farthest_pt_id) = *it;
@@ -173,17 +197,25 @@ void CoverTree::build_tree_point_loop()
 
                 hub_chains.erase(hub_id);
                 leaf_chains.insert(hub_id);
+                to_remove++;
             }
             else if (farthest_dist <= (vertex_ball_radius(hub_id) / base))
             {
                 stopped_chains.insert(hub_id);
+                to_stop++;
             }
             else
             {
                 hub_chains.find(hub_id)->second.push_back(farthest_pt_id);
+                to_extend++;
             }
         }
+        t2 = mytimer::clock::now();
+        double hub_process_time = mytimer::duration(t2-t1).count();
+        printf("Found %lld hubs to delete, %lld hubs to partition, and %lld hubs to extend in %.4f seconds\n", to_remove, to_stop, to_extend, hub_process_time);
 
+        int64_t pts_removed = 0;
+        t1 = mytimer::clock::now();
         if (leaf_chains.size() != 0)
         {
             for (int64_t i = 0; i < num_points(); ++i)
@@ -194,9 +226,17 @@ void CoverTree::build_tree_point_loop()
                 {
                     hub_vtx_ids[i] = hub_pt_ids[i] = -1;
                     dists[i] = 0;
+                    active_pts--;
+                    pts_removed++;
                 }
             }
         }
+        t2 = mytimer::clock::now();
+        double hub_delete_time = mytimer::duration(t2-t1).count();
+        printf("Deleted %lld hubs and %lld associated points in %.4f seconds\n", leaf_chains.size(), pts_removed, hub_delete_time);
+
+        t1 = mytimer::clock::now();
+        int64_t hubs_added = 0;
 
         if (stopped_chains.size() != 0)
         {
@@ -211,6 +251,7 @@ void CoverTree::build_tree_point_loop()
                     int64_t vtx_id = add_vertex(pt_id, hub_id);
                     hub_chains.insert({vtx_id, {pt_id}});
                     hub_pt_id_updates.insert({pt_id, vtx_id});
+                    hubs_added++;
                 }
 
                 hub_chains.erase(hub_id);
@@ -243,6 +284,10 @@ void CoverTree::build_tree_point_loop()
                 }
             }
         }
+
+        t2 = mytimer::clock::now();
+        double partition_time = mytimer::duration(t2-t1).count();
+        printf("Partitioned %lld hubs into %lld new hubs in %.4f seconds\n", stopped_chains.size(), hubs_added, partition_time);
     }
 }
 
