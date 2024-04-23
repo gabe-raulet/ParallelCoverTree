@@ -30,6 +30,7 @@ private:
     double max_radius, base;
     vector<int64_t> pt, level;
     vector<vector<int64_t>> children;
+    unordered_map<int64_t, double> cover_map;
 
     vector<Point> mypoints;
     int64_t mysize, totsize, myoffset;

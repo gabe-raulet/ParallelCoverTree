@@ -29,7 +29,7 @@ void DistCoverTree::build_tree() {}
 int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
 {
     int64_t vertex_level;
-    int64_t vertex_id = pt.size(); // this is probably wrong
+    int64_t vertex_id = pt.size();
 
     pt.push_back(point_id);
     children.emplace_back();
@@ -42,12 +42,14 @@ int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
     else vertex_level = 0;
 
     level.push_back(vertex_level);
+    cover_map.insert({vertex_id, pow(base, -1. * vertex_level)});
+
     return vertex_id;
 }
 
 double DistCoverTree::vertex_ball_radius(int64_t vertex_id) const
 {
-    return pow(base, -1. * level[vertex_id]);
+    return cover_map.find(vertex_id)->second;
 }
 
 void DistCoverTree::initialize_root_hub()
@@ -160,5 +162,33 @@ void DistCoverTree::compute_farthest_hub_pts()
     for (int64_t i = 0; i < my_argmax_pairs.size(); ++i)
     {
         farthest_hub_pts.insert({hub_ids[i], {my_argmax_pairs[i].index, my_argmax_pairs[i].value}});
+    }
+}
+
+void DistCoverTree::update_hub_chains()
+{
+    int64_t hub_id;
+    pair<int64_t, double> farthest_pt;
+    split_chains.clear(), leaf_chains.clear();
+
+    for (auto it = farthest_hub_pts.begin(); it != farthest_hub_pts.end(); ++it)
+    {
+        tie(hub_id, farthest_pt) = *it;
+        int64_t farthest_pt_id = farthest_pt.first;
+        double farthest_dist = farthest_pt.second / max_radius;
+
+        if (farthest_dist == 0)
+        {
+            hub_chains.erase(hub_id);
+            leaf_chains.insert(hub_id);
+        }
+        else if (farthest_dist <= (vertex_ball_radius(hub_id) / base))
+        {
+            split_chains.push_back(hub_id);
+        }
+        else
+        {
+            hub_chains.find(hub_id)->second.push_back(farthest_pt_id);
+        }
     }
 }
