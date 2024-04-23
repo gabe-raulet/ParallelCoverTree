@@ -3,10 +3,10 @@ UNAME_S:=$(shell uname -s)
 
 ifeq ($(D),1)
 FLAGS=-fopenmp -O0 -g -std=c++17 -pedantic
-MPIFLAGS=-O0 -g -std=c++17
+MPIFLAGS=-O0 -g -std=c++17 -fsanitize=address -fno-omit-frame-pointer
 else
-FLAGS=-fopenmp -O2 -DNDEBUG -std=c++17
-MPIFLAGS=-O2 -DNDEBUG -std=c++17
+FLAGS=-fopenmp -O2 -std=c++17
+MPIFLAGS=-O2 -std=c++17
 endif
 
 ifeq ($(UNAME_S), Linux)
