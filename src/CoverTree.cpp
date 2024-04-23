@@ -19,7 +19,7 @@ int64_t CoverTree::num_vertices() const { return pt.size(); }
 int64_t CoverTree::num_levels() const { return *max_element(level.begin(), level.end()) + 1; }
 
 Point CoverTree::get_point(int64_t point_id) const { return points[point_id]; }
-Point CoverTree::get_vertex_point(int64_t vertex_id) const { return points[pt[vertex_id]]; }
+Point CoverTree::get_vertex_point(int64_t vertex_id) const { return get_point(pt[vertex_id]); }
 
 int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
 {
