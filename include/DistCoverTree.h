@@ -41,7 +41,7 @@ private:
 
     vector<int64_t> my_new_vertex_pt_ids, my_new_vertex_hub_ids;
 
-    void batch_new_vertex(int64_t point_id, int64_t parent_id);
+    int64_t batch_new_vertex(int64_t point_id, int64_t parent_id);
     void add_batched_vertices();
 
     vector<double> my_dists;

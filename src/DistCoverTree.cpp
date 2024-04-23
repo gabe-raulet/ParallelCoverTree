@@ -193,10 +193,11 @@ void DistCoverTree::update_hub_chains()
     }
 }
 
-void DistCoverTree::batch_new_vertex(int64_t point_id, int64_t parent_id)
+int64_t DistCoverTree::batch_new_vertex(int64_t point_id, int64_t parent_id)
 {
     my_new_vertex_pt_ids.push_back(point_id);
     my_new_vertex_hub_ids.push_back(parent_id);
+    return pt.size() + my_new_vertex_pt_ids.size();
 }
 
 void DistCoverTree::add_batched_vertices()
@@ -251,4 +252,46 @@ void DistCoverTree::process_leaf_chains()
     }
 
     add_batched_vertices();
+}
+
+void DistCoverTree::process_split_chains()
+{
+    if (!split_chains.empty())
+    {
+        unordered_map<int64_t, int64_t> hub_pt_id_updates;
+        vector<int64_t> new_hub_pts, new_hub_ids;
+        vector<vector<int64_t>*> chain_ptrs(split_chains.size(), nullptr);
+        transform(split_chains.begin(), split_chains.end(), chain_ptrs.begin(),
+                [&](int64_t hub_id) { return &hub_chains.find(hub_id)->second; });
+
+        int64_t num_new_hub_pts = 0;
+        for (auto& chain_ptr : chain_ptrs)
+            num_new_hub_pts += chain_ptr->size();
+
+        new_hub_pts.reserve(num_new_hub_pts);
+        new_hub_ids.reserve(num_new_hub_pts);
+
+        for (int64_t i = 0; i < chain_ptrs.size(); ++i)
+        {
+            new_hub_pts.insert(new_hub_pts.end(), chain_ptrs[i]->cbegin(), chain_ptrs[i]->cend());
+            new_hub_ids.insert(new_hub_ids.end(), chain_ptrs[i]->size(), split_chains[i]);
+            hub_chains.erase(split_chains[i]);
+        }
+
+        for (int64_t i = 0; i < new_hub_pts.size(); ++i)
+        {
+            int64_t vtx_id = add_vertex(new_hub_pts[i], new_hub_ids[i]);
+            hub_chains.insert({vtx_id, {new_hub_pts[i]}});
+            hub_pt_id_updates.insert({new_hub_pts[i], vtx_id});
+        }
+
+        for (int64_t i = 0; i < mysize; ++i)
+        {
+            int64_t closest_pt_id = my_hub_pt_ids[i];
+            auto it = hub_pt_id_updates.find(closest_pt_id);
+
+            if (it != hub_pt_id_updates.end())
+                my_hub_vtx_ids[i] = it->second;
+        }
+    }
 }
