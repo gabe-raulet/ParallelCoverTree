@@ -4,6 +4,7 @@
 #include "read_args.h"
 #include "version.h"
 #include <iostream>
+#include <sstream>
 #include <chrono>
 #include <assert.h>
 #include <stdio.h>
