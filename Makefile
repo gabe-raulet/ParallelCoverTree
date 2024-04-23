@@ -20,7 +20,7 @@ endif
 
 INCLUDES=-I./include
 
-all: epsilon_graph dist_epsilon_graph sgtree
+all: epsilon_graph dist_epsilon_graph
 
 install: epsilon_graph
 	cp epsilon_graph /global/homes/g/gabeh98/software/cover_tree
@@ -30,14 +30,11 @@ install: epsilon_graph
 version.h:
 	@echo "#define GIT_COMMIT \"$(shell git describe --always --dirty --match 'NOT A TAG')\"" > include/version.h
 
-epsilon_graph: programs/epsilon_graph.cpp src/SGTree.cpp include/SGTree.h src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
-	$(MPICXX) -o epsilon_graph $(INCLUDES) $(MPIFLAGS) programs/epsilon_graph.cpp src/SGTree.cpp src/Point.cpp src/read_args.cpp
+epsilon_graph: programs/epsilon_graph.cpp src/CoverTree.cpp include/CoverTree.h src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
+	$(MPICXX) -o epsilon_graph $(INCLUDES) $(MPIFLAGS) programs/epsilon_graph.cpp src/CoverTree.cpp src/Point.cpp src/read_args.cpp
 
 dist_epsilon_graph: programs/dist_epsilon_graph.cpp src/DistCoverTree.cpp include/DistCoverTree.h include/Point.h src/MPITimer.cpp include/MPITimer.h src/read_args.cpp include/read_args.h version.h
 	$(MPICXX) -o dist_epsilon_graph $(INCLUDES) $(MPIFLAGS) programs/dist_epsilon_graph.cpp src/DistCoverTree.cpp src/Point.cpp src/MPITimer.cpp src/read_args.cpp
 
-sgtree: programs/sgtree.cpp src/SGTree.cpp include/SGTree.h src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
-	$(MPICXX) -o sgtree $(INCLUDES) $(MPIFLAGS) programs/sgtree.cpp src/SGTree.cpp src/Point.cpp src/read_args.cpp
-
 clean:
-	rm -rf *.dSYM *.bin *.fvecs epsilon_graph dist_epsilon_graph sgtree version.h
+	rm -rf *.dSYM *.bin *.fvecs epsilon_graph dist_epsilon_graph version.h

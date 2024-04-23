@@ -1,5 +1,5 @@
 #include "Point.h"
-#include "SGTree.h"
+#include "CoverTree.h"
 #include "MyTimer.h"
 #include "read_args.h"
 #include "version.h"
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
     auto tree_start = mytimer::clock::now();
 
-    SGTree tree(points, base);
+    CoverTree tree(points, base);
     tree.build_tree();
 
     auto tree_end = mytimer::clock::now();
