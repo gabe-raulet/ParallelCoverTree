@@ -192,3 +192,51 @@ void DistCoverTree::update_hub_chains()
         }
     }
 }
+
+void DistCoverTree::process_leaf_chains()
+{
+    vector<int64_t> my_new_vertex_pt_ids, my_new_vertex_hub_ids;
+    vector<int64_t> new_vertex_pt_ids, new_vertex_hub_ids;
+
+    if (!leaf_chains.empty())
+    {
+        for (int64_t i = 0; i < mysize; ++i)
+        {
+            int64_t hub_id = my_hub_vtx_ids[i];
+
+            if (leaf_chains.find(hub_id) != leaf_chains.end())
+            {
+                my_new_vertex_pt_ids.push_back(i + myoffset);
+                my_new_vertex_hub_ids.push_back(hub_id);
+                my_hub_vtx_ids[i] = my_hub_pt_ids[i] = -1;
+                my_dists[i] = 0;
+            }
+        }
+    }
+
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<int> recvcounts(nprocs);
+    vector<int> displs(nprocs);
+    int sendcount = static_cast<int>(my_new_vertex_pt_ids.size());
+
+    recvcounts[myrank] = sendcount;
+    MPI_Allgather(MPI_IN_PLACE, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    displs.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+
+    int totrecv = recvcounts.back() + displs.back();
+    new_vertex_pt_ids.resize(totrecv);
+    new_vertex_hub_ids.resize(totrecv);
+
+    MPI_Allgatherv(my_new_vertex_pt_ids.data(), sendcount, MPI_INT64_T, new_vertex_pt_ids.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
+    MPI_Allgatherv(my_new_vertex_hub_ids.data(), sendcount, MPI_INT64_T, new_vertex_hub_ids.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
+
+    for (int i = 0; i < totrecv; ++i)
+    {
+        add_vertex(new_vertex_pt_ids[i], new_vertex_hub_ids[i]);
+    }
+}
