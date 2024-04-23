@@ -26,6 +26,30 @@ DistCoverTree::DistCoverTree(const vector<Point>& mypoints, double base, MPI_Com
 
 void DistCoverTree::build_tree() {}
 
+int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
+{
+    int64_t vertex_level;
+    int64_t vertex_id = pt.size(); // this is probably wrong
+
+    pt.push_back(point_id);
+    children.emplace_back();
+
+    if (parent_id >= 0)
+    {
+        vertex_level = level[parent_id] + 1;
+        children[parent_id].push_back(vertex_id);
+    }
+    else vertex_level = 0;
+
+    level.push_back(vertex_level);
+    return vertex_id;
+}
+
+double DistCoverTree::vertex_ball_radius(int64_t vertex_id) const
+{
+    return pow(base, -1. * level[vertex_id]);
+}
+
 void DistCoverTree::initialize_root_hub()
 {
     my_dists.resize(mysize);
