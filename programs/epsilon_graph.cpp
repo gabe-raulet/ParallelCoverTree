@@ -1,5 +1,5 @@
 #include "Point.h"
-#include "CoverTree.h"
+#include "SGTree.h"
 #include "MyTimer.h"
 #include "read_args.h"
 #include "version.h"
@@ -69,12 +69,14 @@ int main(int argc, char *argv[])
 
     auto tree_start = mytimer::clock::now();
 
-    CoverTree tree(points, base);
+    SGTree tree(points, base);
+    tree.build_tree();
 
     auto tree_end = mytimer::clock::now();
     double tree_time = mytimer::duration(tree_end - tree_start).count();
 
     fprintf(stderr, "[time=%.4f] :: (build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", tree_time, tree.num_vertices(), tree.num_levels(), base);
+    tree.print_timing_results();
 
     /*
      * Build epsilon graph from cover tree

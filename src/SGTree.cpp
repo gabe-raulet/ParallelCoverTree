@@ -292,3 +292,38 @@ void SGTree::print_timing_results() const
     tie(tot, avg, stddev) = get_stats(update_dists_and_pointers_times);
     fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (update_dists_and_pointers)\n", tot, avg, stddev, 100.0*(tot/overall));
 }
+
+vector<int64_t> SGTree::radii_query(const Point& query, double radius) const
+{
+    unordered_set<int64_t> idset;
+    vector<int64_t> stack = {0};
+
+    while (stack.size() != 0)
+    {
+        int64_t u = stack.back(); stack.pop_back();
+        vector<int64_t> mychildren = children[u];
+
+        for (int64_t v : mychildren)
+        {
+            if (query.distance(get_vertex_point(v)) <= radius + max_radius*vertex_ball_radius(v))
+                stack.push_back(v);
+
+            if (query.distance(get_vertex_point(v)) <= radius)
+                idset.insert(pt[v]);
+        }
+    }
+
+    return vector<int64_t>(idset.begin(), idset.end());
+}
+
+vector<vector<int64_t>> SGTree::build_epsilon_graph(double radius) const
+{
+    vector<vector<int64_t>> graph(num_points());
+
+    for (int64_t u = 0; u < num_points(); ++u)
+    {
+        graph[u] = radii_query(get_point(u), radius);
+    }
+
+    return graph;
+}

@@ -22,6 +22,9 @@ public:
     Point get_point(int64_t point_id) const;
     Point get_vertex_point(int64_t vertex_id) const;
 
+    vector<int64_t> radii_query(const Point& query, double radius) const;
+    vector<vector<int64_t>> build_epsilon_graph(double radius) const;
+
     void print_timing_results() const;
 
 private:
