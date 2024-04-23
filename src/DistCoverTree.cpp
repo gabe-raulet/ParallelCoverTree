@@ -73,3 +73,8 @@ void DistCoverTree::initialize_root_hub()
 
     MPI_Allreduce(MPI_IN_PLACE, &max_radius, 1, MPI_DOUBLE, MPI_MAX, comm);
 }
+
+void DistCoverTree::compute_farthest_hub_pts()
+{
+    return;
+}
