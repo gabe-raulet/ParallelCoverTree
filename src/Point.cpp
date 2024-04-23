@@ -2,6 +2,7 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
+#include <numeric>
 
 Point::Point() { data[0] = data[1] = 0; }
 Point::Point(const float *p) { data[0] = p[0], data[1] = p[1]; }
@@ -48,6 +49,45 @@ vector<Point> Point::random_points(int64_t num_points, double var, int seed)
         points.emplace_back(&point_data[i*Point::dim]);
 
     return points;
+}
+
+void Point::create_mpi_dtype(MPI_Datatype *MPI_POINT)
+{
+    MPI_Type_contiguous(2, MPI_FLOAT, MPI_POINT);
+}
+
+vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed, int root, MPI_Comm comm)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<Point> points, mypoints;
+    vector<int> sendcounts, displs;
+    int recvcount;
+
+    if (myrank == root)
+    {
+        points = random_points(num_points, var, seed);
+        sendcounts.resize(nprocs);
+        displs.resize(nprocs);
+        fill(sendcounts.begin(), sendcounts.end(), (num_points+nprocs-1)/nprocs);
+        sendcounts.back() = num_points - (nprocs-1)*sendcounts.back();
+        displs.front() = 0;
+        partial_sum(sendcounts.begin(), sendcounts.end()-1, displs.begin()+1);
+    }
+
+    MPI_Scatter(sendcounts.data(), 1, MPI_INT, &recvcount, 1, MPI_INT, root, comm);
+
+    MPI_Datatype MPI_POINT;
+    create_mpi_dtype(&MPI_POINT);
+    MPI_Type_commit(&MPI_POINT);
+
+    mypoints.resize(recvcount);
+    MPI_Scatterv(points.data(), sendcounts.data(), displs.data(), MPI_POINT, mypoints.data(), recvcount, MPI_POINT, root, comm);
+
+    MPI_Type_free(&MPI_POINT);
+    return mypoints;
 }
 
 string Point::repr() const
