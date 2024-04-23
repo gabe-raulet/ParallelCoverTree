@@ -4,5 +4,6 @@
 *.bin
 *.swp
 epsilon_graph
+dist_epsilon_graph
 sgtree
 version.h
