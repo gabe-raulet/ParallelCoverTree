@@ -1,3 +1,4 @@
+#include "DistCoverTree.h"
 #include "Point.h"
 #include "MPITimer.h"
 #include "read_args.h"
@@ -59,10 +60,21 @@ int main(int argc, char *argv[])
     MPITimer timer(MPI_COMM_WORLD, 0);
 
     timer.start_timer();
+
     vector<Point> mypoints = Point::dist_random_points(n, var, seed, 0, MPI_COMM_WORLD);
+
     timer.stop_timer();
 
     if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_random_points) :: generated %lld random points\n", timer.get_max_time(), timer.get_avg_time(), n);
+
+    timer.start_timer();
+
+    DistCoverTree tree(mypoints, base, MPI_COMM_WORLD);
+    tree.build_tree();
+
+    timer.stop_timer();
+
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", timer.get_max_time(), timer.get_avg_time(), tree.num_vertices(), tree.num_levels(), base);
 
     MPI_Finalize();
     return 0;
