@@ -39,6 +39,11 @@ private:
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double vertex_ball_radius(int64_t vertex_id) const;
 
+    vector<int64_t> my_new_vertex_pt_ids, my_new_vertex_hub_ids;
+
+    void batch_new_vertex(int64_t point_id, int64_t parent_id);
+    void add_batched_vertices();
+
     vector<double> my_dists;
     vector<int64_t> my_hub_vtx_ids, my_hub_pt_ids;
     unordered_map<int64_t, vector<int64_t>> hub_chains;

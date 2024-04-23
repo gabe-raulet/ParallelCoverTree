@@ -193,30 +193,19 @@ void DistCoverTree::update_hub_chains()
     }
 }
 
-void DistCoverTree::process_leaf_chains()
+void DistCoverTree::batch_new_vertex(int64_t point_id, int64_t parent_id)
 {
-    vector<int64_t> my_new_vertex_pt_ids, my_new_vertex_hub_ids;
-    vector<int64_t> new_vertex_pt_ids, new_vertex_hub_ids;
+    my_new_vertex_pt_ids.push_back(point_id);
+    my_new_vertex_hub_ids.push_back(parent_id);
+}
 
-    if (!leaf_chains.empty())
-    {
-        for (int64_t i = 0; i < mysize; ++i)
-        {
-            int64_t hub_id = my_hub_vtx_ids[i];
-
-            if (leaf_chains.find(hub_id) != leaf_chains.end())
-            {
-                my_new_vertex_pt_ids.push_back(i + myoffset);
-                my_new_vertex_hub_ids.push_back(hub_id);
-                my_hub_vtx_ids[i] = my_hub_pt_ids[i] = -1;
-                my_dists[i] = 0;
-            }
-        }
-    }
-
+void DistCoverTree::add_batched_vertices()
+{
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
+
+    vector<int64_t> new_vertex_pt_ids, new_vertex_hub_ids;
 
     vector<int> recvcounts(nprocs);
     vector<int> displs(nprocs);
@@ -239,4 +228,27 @@ void DistCoverTree::process_leaf_chains()
     {
         add_vertex(new_vertex_pt_ids[i], new_vertex_hub_ids[i]);
     }
+
+    my_new_vertex_pt_ids.clear();
+    my_new_vertex_hub_ids.clear();
+}
+
+void DistCoverTree::process_leaf_chains()
+{
+    if (!leaf_chains.empty())
+    {
+        for (int64_t i = 0; i < mysize; ++i)
+        {
+            int64_t hub_id = my_hub_vtx_ids[i];
+
+            if (leaf_chains.find(hub_id) != leaf_chains.end())
+            {
+                batch_new_vertex(i + myoffset, hub_id);
+                my_hub_vtx_ids[i] = my_hub_pt_ids[i] = -1;
+                my_dists[i] = 0;
+            }
+        }
+    }
+
+    add_batched_vertices();
 }
