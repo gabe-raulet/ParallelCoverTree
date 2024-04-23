@@ -74,8 +74,8 @@ void SGTree::compute_farthest_hub_pts()
 {
     auto t1 = mytimer::clock::now();
 
-    unordered_map<int64_t, pair<int64_t, double>> argmaxes;
-    transform(hub_chains.begin(), hub_chains.end(), inserter(argmaxes, argmaxes.end()),
+    farthest_hub_pts.clear();
+    transform(hub_chains.begin(), hub_chains.end(), inserter(farthest_hub_pts, farthest_hub_pts.end()),
               [](auto pair) { return make_pair(pair.first, make_pair(-1, -1.0)); });
 
     for (int64_t i = 0; i < num_points(); ++i)
@@ -84,7 +84,7 @@ void SGTree::compute_farthest_hub_pts()
 
         if (hub_id >= 0)
         {
-            auto& it = argmaxes.find(hub_id)->second;
+            auto& it = farthest_hub_pts.find(hub_id)->second;
 
             if (dists[i] > it.second)
             {
@@ -93,10 +93,6 @@ void SGTree::compute_farthest_hub_pts()
             }
         }
     }
-
-    farthest_hub_pts.clear();
-    transform(argmaxes.begin(), argmaxes.end(), inserter(farthest_hub_pts, farthest_hub_pts.end()),
-              [](auto pair) { return make_pair(pair.first, pair.second.first); });
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
@@ -107,13 +103,15 @@ void SGTree::update_hub_chains()
 {
     auto t1 = mytimer::clock::now();
 
-    int64_t hub_id, farthest_pt_id;
+    int64_t hub_id;
+    pair<int64_t, double> farthest_pt;
     split_chains.clear(), leaf_chains.clear();
 
     for (auto it = farthest_hub_pts.begin(); it != farthest_hub_pts.end(); ++it)
     {
-        tie(hub_id, farthest_pt_id) = *it;
-        double farthest_dist = dists[farthest_pt_id] / max_radius;
+        tie(hub_id, farthest_pt) = *it;
+        int64_t farthest_pt_id = farthest_pt.first;
+        double farthest_dist = farthest_pt.second / max_radius;
 
         if (farthest_dist == 0)
         {

@@ -159,6 +159,6 @@ void DistCoverTree::compute_farthest_hub_pts()
 
     for (int64_t i = 0; i < my_argmax_pairs.size(); ++i)
     {
-        farthest_hub_pts.insert({hub_ids[i], my_argmax_pairs[i].index});
+        farthest_hub_pts.insert({hub_ids[i], {my_argmax_pairs[i].index, my_argmax_pairs[i].value}});
     }
 }

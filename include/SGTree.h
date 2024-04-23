@@ -43,7 +43,7 @@ private:
     vector<double> dists;
     vector<int64_t> hub_vtx_ids, hub_pt_ids;
     unordered_map<int64_t, vector<int64_t>> hub_chains;
-    unordered_map<int64_t, int64_t> farthest_hub_pts;
+    unordered_map<int64_t, pair<int64_t, double>> farthest_hub_pts;
     unordered_set<int64_t> leaf_chains;
     vector<int64_t> split_chains;
 
