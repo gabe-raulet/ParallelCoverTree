@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
     timer.stop_timer();
 
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_random_points) :: generated %lld random points\n", timer.get_max_time(), timer.get_avg_time(), n);
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_random_points) :: [n=%lld,var=%.2f,seed=%d]\n", timer.get_max_time(), timer.get_avg_time(), n, var, seed);
 
     timer.start_timer();
 
