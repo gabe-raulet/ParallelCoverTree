@@ -316,7 +316,7 @@ void CoverTree::build_tree(bool verbose)
             double ts = process_split_chains_times.back();
             double td = update_dists_and_pointers_times.back();
             double tall = tc + tu + tl + ts + td;
-            fprintf(stderr, "[itr=%lld] [%.1f,%.1f,%.1f,%.1f,%.1f]\n", niters, 100.0*(tc/tall), 100.0*(tu/tall), 100.0*(tl/tall), 100.0*(ts/tall), 100.0*(td/tall));
+            fprintf(stderr, "[time=%.4f,itr=%lld] :: time splits :: [%.1f,%.1f,%.1f,%.1f,%.1f]\n", tall, niters, 100.0*(tc/tall), 100.0*(tu/tall), 100.0*(tl/tall), 100.0*(ts/tall), 100.0*(td/tall));
         }
     }
 }
