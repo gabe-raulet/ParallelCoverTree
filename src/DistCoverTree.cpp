@@ -1,5 +1,6 @@
 #include "DistCoverTree.h"
 #include "Point.h"
+#include "MPITimer.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -28,14 +29,14 @@ void DistCoverTree::build_tree()
 {
     initialize_root_hub();
 
-    while (!hub_chains.empty())
-    {
-        compute_farthest_hub_pts();
-        update_hub_chains();
-        process_leaf_chains();
-        process_split_chains();
-        update_dists_and_pointers();
-    }
+    //while (!hub_chains.empty())
+    //{
+        //compute_farthest_hub_pts();
+        //update_hub_chains();
+        //process_leaf_chains();
+        //process_split_chains();
+        //update_dists_and_pointers();
+    //}
 }
 
 int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
@@ -62,31 +63,6 @@ int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
 double DistCoverTree::vertex_ball_radius(int64_t vertex_id) const
 {
     return cover_map.find(vertex_id)->second;
-}
-
-void DistCoverTree::initialize_root_hub()
-{
-    my_dists.resize(mysize);
-    my_hub_vtx_ids.resize(mysize);
-    my_hub_pt_ids.resize(mysize);
-
-    Point root_pt = mypoints.front();
-    int64_t root_id = add_vertex(0, -1);
-
-    MPI_Datatype MPI_POINT;
-    Point::create_mpi_dtype(&MPI_POINT);
-    MPI_Bcast(&root_pt, 1, MPI_POINT, 0, comm);
-    MPI_Type_free(&MPI_POINT);
-
-    for (int64_t i = 0; i < mysize; ++i)
-    {
-        my_dists[i] = root_pt.distance(mypoints[i]);
-        my_hub_vtx_ids[i] = root_id;
-        my_hub_pt_ids[i] = pt[root_id];
-        max_radius = max(my_dists[i], max_radius);
-    }
-
-    MPI_Allreduce(MPI_IN_PLACE, &max_radius, 1, MPI_DOUBLE, MPI_MAX, comm);
 }
 
 struct ArgmaxPair
@@ -123,6 +99,59 @@ struct ArgmaxPair
         MPI_Op_create(&mpi_argmax, 1, op);
     }
 };
+
+void DistCoverTree::initialize_root_hub()
+{
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
+    my_dists.resize(mysize);
+    my_hub_vtx_ids.resize(mysize);
+    my_hub_pt_ids.resize(mysize);
+
+    Point root_pt = mypoints.front();
+    int64_t root_id = add_vertex(0, -1);
+
+    MPI_Datatype MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+    MPI_Bcast(&root_pt, 1, MPI_POINT, 0, comm);
+    MPI_Type_free(&MPI_POINT);
+
+    int64_t argmax = -1;
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        my_dists[i] = root_pt.distance(mypoints[i]);
+        my_hub_vtx_ids[i] = root_id;
+        my_hub_pt_ids[i] = pt[root_id];
+
+        if (my_dists[i] > max_radius)
+        {
+            max_radius = my_dists[i];
+            argmax = myoffset + i;
+        }
+    }
+
+    MPI_Datatype MPI_ARGMAX_PAIR;
+    MPI_Op MPI_ARGMAX;
+
+    ArgmaxPair::create_mpi_dtype(&MPI_ARGMAX_PAIR);
+    ArgmaxPair::create_mpi_op(&MPI_ARGMAX);
+
+    ArgmaxPair argpair(argmax, max_radius);
+
+    MPI_Allreduce(MPI_IN_PLACE, &argpair, 1, MPI_ARGMAX_PAIR, MPI_ARGMAX, comm);
+
+    max_radius = argpair.value;
+    argmax = argpair.index;
+
+    timer.stop_timer();
+
+    int myrank;
+    MPI_Comm_rank(comm, &myrank);
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (initialize_root_hub) [argmax=%lld,max_radius=%.4f]\n", timer.get_max_time(), timer.get_avg_time(), argmax, max_radius);
+}
+
 
 
 void DistCoverTree::compute_farthest_hub_pts()

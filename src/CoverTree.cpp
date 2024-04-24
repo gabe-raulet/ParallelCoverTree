@@ -54,13 +54,19 @@ void CoverTree::initialize_root_hub()
     hub_pt_ids.resize(num_points());
 
     int64_t root_id = add_vertex(0, -1);
+    int64_t argmax = -1;
 
     for (int64_t i = 0; i < num_points(); ++i)
     {
         dists[i] = get_vertex_point(root_id).distance(get_point(i));
         hub_vtx_ids[i] = root_id;
         hub_pt_ids[i] = pt[root_id];
-        max_radius = max(dists[i], max_radius);
+
+        if (dists[i] > max_radius)
+        {
+            max_radius = dists[i];
+            argmax = i;
+        }
     }
 
     hub_chains.insert({root_id, {pt[root_id]}});
@@ -68,6 +74,8 @@ void CoverTree::initialize_root_hub()
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
     initialize_root_hub_times.push_back(t);
+
+    fprintf(stderr, "[time=%.4f] :: (initialize_root_hub) [argmax=%lld,max_radius=%.4f]\n", t, argmax, max_radius);
 }
 
 void CoverTree::compute_farthest_hub_pts()
