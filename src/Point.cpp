@@ -54,6 +54,7 @@ vector<Point> Point::random_points(int64_t num_points, double var, int seed)
 void Point::create_mpi_dtype(MPI_Datatype *MPI_POINT)
 {
     MPI_Type_contiguous(2, MPI_FLOAT, MPI_POINT);
+    MPI_Type_commit(MPI_POINT);
 }
 
 vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed, int root, MPI_Comm comm)
@@ -81,7 +82,6 @@ vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed
 
     MPI_Datatype MPI_POINT;
     create_mpi_dtype(&MPI_POINT);
-    MPI_Type_commit(&MPI_POINT);
 
     mypoints.resize(recvcount);
     MPI_Scatterv(points.data(), sendcounts.data(), displs.data(), MPI_POINT, mypoints.data(), recvcount, MPI_POINT, root, comm);
