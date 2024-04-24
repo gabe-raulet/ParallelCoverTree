@@ -23,8 +23,8 @@ public:
     Point get_my_point(int64_t point_id) const;
     Point get_my_vertex_point(int64_t vertex_id) const;
 
-    int64_t num_vertices() const { return 0; }
-    int64_t num_levels() const {return 0; }
+    int64_t num_vertices() const { return pt.size(); }
+    int64_t num_levels() const {return *max_element(level.begin(), level.end()) + 1; }
 
 private:
     double max_radius, base;

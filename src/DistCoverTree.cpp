@@ -24,7 +24,19 @@ DistCoverTree::DistCoverTree(const vector<Point>& mypoints, double base, MPI_Com
     MPI_Bcast(&totsize, 1, MPI_INT64_T, nprocs-1, comm);
 }
 
-void DistCoverTree::build_tree() {}
+void DistCoverTree::build_tree()
+{
+    initialize_root_hub();
+
+    while (!hub_chains.empty())
+    {
+        compute_farthest_hub_pts();
+        update_hub_chains();
+        process_leaf_chains();
+        process_split_chains();
+        update_dists_and_pointers();
+    }
+}
 
 int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
 {
@@ -59,6 +71,7 @@ void DistCoverTree::initialize_root_hub()
     my_hub_pt_ids.resize(mysize);
 
     Point root_pt = mypoints.front();
+    int64_t root_id = add_vertex(0, -1);
 
     MPI_Datatype MPI_POINT;
     Point::create_mpi_dtype(&MPI_POINT);
@@ -68,7 +81,8 @@ void DistCoverTree::initialize_root_hub()
     for (int64_t i = 0; i < mysize; ++i)
     {
         my_dists[i] = root_pt.distance(mypoints[i]);
-        my_hub_vtx_ids[i] = my_hub_pt_ids[i] = 0;
+        my_hub_vtx_ids[i] = root_id;
+        my_hub_pt_ids[i] = pt[root_id];
         max_radius = max(my_dists[i], max_radius);
     }
 
