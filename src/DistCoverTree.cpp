@@ -62,7 +62,6 @@ void DistCoverTree::initialize_root_hub()
 
     MPI_Datatype MPI_POINT;
     Point::create_mpi_dtype(&MPI_POINT);
-    MPI_Type_commit(&MPI_POINT);
     MPI_Bcast(&root_pt, 1, MPI_POINT, 0, comm);
     MPI_Type_free(&MPI_POINT);
 
@@ -292,6 +291,86 @@ void DistCoverTree::process_split_chains()
 
             if (it != hub_pt_id_updates.end())
                 my_hub_vtx_ids[i] = it->second;
+        }
+    }
+}
+
+unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t>& point_ids) const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    int sendcount;
+    vector<int> recvcounts(nprocs), displs(nprocs);
+    vector<Point> sendbuf, recvbuf;
+    vector<int64_t> myids, ids;
+
+    for (int64_t id : point_ids)
+        if (myoffset <= id && id < myoffset + mysize)
+        {
+            sendbuf.push_back(mypoints[id]);
+            myids.push_back(id);
+        }
+
+    sendcount = static_cast<int>(sendbuf.size());
+
+    MPI_Allgather(&sendcount, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    displs.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+
+    int totrecv = recvcounts.back() + displs.back();
+    recvbuf.resize(totrecv);
+    ids.resize(totrecv);
+
+    MPI_Datatype MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+
+    MPI_Allgatherv(sendbuf.data(), sendcount, MPI_POINT, recvbuf.data(), recvcounts.data(), displs.data(), MPI_POINT, comm);
+    MPI_Allgatherv(myids.data(), sendcount, MPI_INT64_T, ids.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
+
+    unordered_map<int64_t, Point> collected_points;
+    collected_points.reserve(totrecv);
+
+    for (int64_t i = 0; i < static_cast<int64_t>(totrecv); ++i)
+        collected_points.insert({ids[i], recvbuf[i]});
+
+    return collected_points;
+}
+
+void DistCoverTree::update_dists_and_pointers()
+{
+    vector<int64_t> point_ids;
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t hub_id = my_hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
+            point_ids.push_back(last_chain_pt_id);
+        }
+    }
+
+    unordered_map<int64_t, Point> collected_points = collect_points(point_ids);
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t hub_id = my_hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
+            double lastdist = my_dists[i];
+            double curdist = mypoints[i].distance(collected_points.find(last_chain_pt_id)->second);
+
+            if (curdist <= lastdist)
+            {
+                my_dists[i] = curdist;
+                my_hub_pt_ids[i] = last_chain_pt_id;
+            }
         }
     }
 }
