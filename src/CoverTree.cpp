@@ -47,7 +47,7 @@ double CoverTree::vertex_ball_radius(int64_t vertex_id) const
     return pow(base, -1. * level[vertex_id]);
 }
 
-void CoverTree::initialize_root_hub()
+void CoverTree::initialize_root_hub(bool verbose)
 {
     auto t1 = mytimer::clock::now();
 
@@ -77,10 +77,10 @@ void CoverTree::initialize_root_hub()
     double t = mytimer::duration(t2-t1).count();
     initialize_root_hub_times.push_back(t);
 
-    fprintf(stderr, "[time=%.4f,itr=%lld] :: (init_root_hub) [argmax=%lld,max_radius=%.4f]\n", t, niters, argmax, max_radius);
+    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (init_root_hub) [argmax=%lld,max_radius=%.4f]\n", t, niters, argmax, max_radius);
 }
 
-void CoverTree::compute_farthest_hub_pts()
+void CoverTree::compute_farthest_hub_pts(bool verbose)
 {
     auto t1 = mytimer::clock::now();
 
@@ -108,10 +108,10 @@ void CoverTree::compute_farthest_hub_pts()
     double t = mytimer::duration(t2-t1).count();
     compute_farthest_hub_pts_times.push_back(t);
 
-    fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_chains) [hub_chains=%lu,levels=%lld]\n", t, niters, hub_chains.size(), num_levels());
+    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_chains) [hub_chains=%lu,levels=%lld]\n", t, niters, hub_chains.size(), num_levels());
 }
 
-void CoverTree::update_hub_chains()
+void CoverTree::update_hub_chains(bool verbose)
 {
     auto t1 = mytimer::clock::now();
 
@@ -146,10 +146,10 @@ void CoverTree::update_hub_chains()
     double t = mytimer::duration(t2-t1).count();
     update_hub_chains_times.push_back(t);
 
-    fprintf(stderr, "[time=%.4f,itr=%lld] :: (update_chains) [hleaves=%lu,splits=%lu,exts=%lld]\n", t, niters, leaf_chains.size(), split_chains.size(), extended);
+    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (update_chains) [hleaves=%lu,splits=%lu,exts=%lld]\n", t, niters, leaf_chains.size(), split_chains.size(), extended);
 }
 
-void CoverTree::process_leaf_chains()
+void CoverTree::process_leaf_chains(bool verbose)
 {
     auto t1 = mytimer::clock::now();
     int64_t nlpts = 0;
@@ -174,10 +174,10 @@ void CoverTree::process_leaf_chains()
     double t = mytimer::duration(t2-t1).count();
     process_leaf_chains_times.push_back(t);
 
-    fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_leaves) [leaf_pts=%lld]\n", t, niters, nlpts);
+    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_leaves) [leaf_pts=%lld]\n", t, niters, nlpts);
 }
 
-void CoverTree::process_split_chains()
+void CoverTree::process_split_chains(bool verbose)
 {
     auto t1 = mytimer::clock::now();
 
@@ -229,10 +229,10 @@ void CoverTree::process_split_chains()
     double t = mytimer::duration(t2-t1).count();
     process_split_chains_times.push_back(t);
 
-    fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_splits) [split_pts=%lld]\n", t, niters, nsplts);
+    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_splits) [split_pts=%lld]\n", t, niters, nsplts);
 }
 
-void CoverTree::update_dists_and_pointers()
+void CoverTree::update_dists_and_pointers(bool verbose)
 {
     auto t1 = mytimer::clock::now();
 
@@ -258,29 +258,32 @@ void CoverTree::update_dists_and_pointers()
     double t = mytimer::duration(t2-t1).count();
     update_dists_and_pointers_times.push_back(t);
 
-    fprintf(stderr, "[time=%.4f,itr=%lld] :: (updates)\n", t, niters);
+    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (updates)\n", t, niters);
 }
 
-void CoverTree::build_tree()
+void CoverTree::build_tree(bool verbose)
 {
-    initialize_root_hub();
+    initialize_root_hub(verbose);
 
     while (!hub_chains.empty())
     {
         niters++;
-        compute_farthest_hub_pts();
-        update_hub_chains();
-        process_leaf_chains();
-        process_split_chains();
-        update_dists_and_pointers();
+        compute_farthest_hub_pts(verbose);
+        update_hub_chains(verbose);
+        process_leaf_chains(verbose);
+        process_split_chains(verbose);
+        update_dists_and_pointers(verbose);
 
-        double tc = compute_farthest_hub_pts_times.back();
-        double tu = update_hub_chains_times.back();
-        double tl = process_leaf_chains_times.back();
-        double ts = process_split_chains_times.back();
-        double td = update_dists_and_pointers_times.back();
-        double tall = tc + tu + tl + ts + td;
-        fprintf(stderr, "[itr=%lld] [%.1f,%.1f,%.1f,%.1f,%.1f]\n", niters, 100.0*(tc/tall), 100.0*(tu/tall), 100.0*(tl/tall), 100.0*(ts/tall), 100.0*(td/tall));
+        if (verbose)
+        {
+            double tc = compute_farthest_hub_pts_times.back();
+            double tu = update_hub_chains_times.back();
+            double tl = process_leaf_chains_times.back();
+            double ts = process_split_chains_times.back();
+            double td = update_dists_and_pointers_times.back();
+            double tall = tc + tu + tl + ts + td;
+            fprintf(stderr, "[itr=%lld] [%.1f,%.1f,%.1f,%.1f,%.1f]\n", niters, 100.0*(tc/tall), 100.0*(tu/tall), 100.0*(tl/tall), 100.0*(ts/tall), 100.0*(td/tall));
+        }
     }
 }
 

@@ -13,7 +13,7 @@ class CoverTree
 public:
     CoverTree(const vector<Point>& points, double base);
 
-    void build_tree();
+    void build_tree(bool verbose = false);
 
     int64_t num_points() const;
     int64_t num_vertices() const;
@@ -48,12 +48,12 @@ private:
     unordered_set<int64_t> leaf_chains;
     vector<int64_t> split_chains;
 
-    void initialize_root_hub();
-    void compute_farthest_hub_pts();
-    void update_hub_chains();
-    void process_leaf_chains();
-    void process_split_chains();
-    void update_dists_and_pointers();
+    void initialize_root_hub(bool verbose = false);
+    void compute_farthest_hub_pts(bool verbose = false);
+    void update_hub_chains(bool verbose = false);
+    void process_leaf_chains(bool verbose = false);
+    void process_split_chains(bool verbose = false);
+    void update_dists_and_pointers(bool verbose = false);
 
     vector<double> initialize_root_hub_times;
     vector<double> compute_farthest_hub_pts_times;

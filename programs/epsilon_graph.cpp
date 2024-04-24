@@ -19,37 +19,40 @@ string program_str(int argc, char *argv[]);
 int main(int argc, char *argv[])
 {
     int64_t n;
-    double var;
-    double radius;
+    double var = 10.0;
+    double radius = 0.15;
     double base = 2.0;
     int seed = -1;
     int skip_test = 0;
+    int verbose = 0;
 
     if (argc == 1 || find_arg_idx(argc, argv, "-h") >= 0)
     {
         fprintf(stderr, "Usage: %s [options]\n", argv[0]);
         fprintf(stderr, "Options: -n INT    number of points [required]\n");
-        fprintf(stderr, "         -V FLOAT  variance [required]\n");
-        fprintf(stderr, "         -r FLOAT  radius [required]\n");
-        fprintf(stderr, "         -s INT    rng seed [default: random]\n");
+        fprintf(stderr, "         -V FLOAT  variance [default: %.2f]\n", var);
+        fprintf(stderr, "         -r FLOAT  radius [default: %.2f]\n", radius);
         fprintf(stderr, "         -C FLOAT  cover base [default: %.2f]\n", base);
+        fprintf(stderr, "         -s INT    rng seed [default: random]\n");
         fprintf(stderr, "         -F        skip test\n");
+        fprintf(stderr, "         -v        verbose\n");
         fprintf(stderr, "         -h        help message\n");
         return -1;
     }
 
     n = read_formatted_int_arg(argc, argv, "-n", NULL);
-    var = read_double_arg(argc, argv, "-V", NULL);
-    radius = read_double_arg(argc, argv, "-r", NULL);
+    var = read_double_arg(argc, argv, "-V", &var);
+    radius = read_double_arg(argc, argv, "-r", &radius);
     seed = read_int_arg(argc, argv, "-s", &seed);
     base = read_double_arg(argc, argv, "-C", &base);
     skip_test = !!(find_arg_idx(argc, argv, "-F") >= 0);
+    verbose = !!(find_arg_idx(argc, argv, "-v") >= 0);
 
     if (seed < 0)
     {
         random_device rd;
         default_random_engine gen(rd());
-        uniform_int_distribution<int> dis{numeric_limits<int>::min(), numeric_limits<int>::max()};
+        uniform_int_distribution<int> dis{0, numeric_limits<int>::max()};
         seed = dis(gen);
     }
 
@@ -74,7 +77,7 @@ int main(int argc, char *argv[])
     auto tree_start = mytimer::clock::now();
 
     CoverTree tree(points, base);
-    tree.build_tree();
+    tree.build_tree(static_cast<bool>(verbose));
 
     auto tree_end = mytimer::clock::now();
     double tree_time = mytimer::duration(tree_end - tree_start).count();

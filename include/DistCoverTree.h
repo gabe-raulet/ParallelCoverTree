@@ -14,7 +14,7 @@ class DistCoverTree
 public:
     DistCoverTree(const vector<Point>& mypoints, double base, MPI_Comm comm);
 
-    void build_tree();
+    void build_tree(bool verbose = false);
 
     int64_t my_num_points() const { return mysize; }
     int64_t tot_num_points() const { return totsize; }
@@ -54,12 +54,12 @@ private:
     unordered_set<int64_t> leaf_chains;
     vector<int64_t> split_chains;
 
-    void initialize_root_hub();
-    void compute_farthest_hub_pts();
-    void update_hub_chains();
-    void process_leaf_chains();
-    void process_split_chains();
-    void update_dists_and_pointers();
+    void initialize_root_hub(bool verbose = false);
+    void compute_farthest_hub_pts(bool verbose = false);
+    void update_hub_chains(bool verbose = false);
+    void process_leaf_chains(bool verbose = false);
+    void process_split_chains(bool verbose = false);
+    void update_dists_and_pointers(bool verbose = false);
 };
 
 #endif

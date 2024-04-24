@@ -38,8 +38,7 @@ vector<Point> Point::random_points(int64_t num_points, double var, int seed)
     vector<float> point_data(num_points * Point::dim);
     vector<Point> points;
 
-    random_device rd;
-    default_random_engine gen(seed < 0? rd() : 17*seed);
+    default_random_engine gen(17*seed);
     normal_distribution dis{0.0, sqrt(var)};
     generate(point_data.begin(), point_data.end(), [&]() { return dis(gen); });
 

@@ -31,18 +31,18 @@ DistCoverTree::DistCoverTree(const vector<Point>& mypoints, double base, MPI_Com
     MPI_Bcast(&totsize, 1, MPI_INT64_T, nprocs-1, comm);
 }
 
-void DistCoverTree::build_tree()
+void DistCoverTree::build_tree(bool verbose)
 {
-    initialize_root_hub();
+    initialize_root_hub(verbose);
 
     while (!hub_chains.empty())
     {
         niters++;
-        compute_farthest_hub_pts();
-        update_hub_chains();
-        process_leaf_chains();
-        process_split_chains();
-        update_dists_and_pointers();
+        compute_farthest_hub_pts(verbose);
+        update_hub_chains(verbose);
+        process_leaf_chains(verbose);
+        process_split_chains(verbose);
+        update_dists_and_pointers(verbose);
     }
 }
 
@@ -108,7 +108,7 @@ struct ArgmaxPair
     }
 };
 
-void DistCoverTree::initialize_root_hub()
+void DistCoverTree::initialize_root_hub(bool verbose)
 {
     MPITimer timer(comm, 0);
     timer.start_timer();
@@ -156,14 +156,17 @@ void DistCoverTree::initialize_root_hub()
 
     timer.stop_timer();
 
-    int myrank;
-    MPI_Comm_rank(comm, &myrank);
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (initialize_root_hub) [argmax=%lld,max_radius=%.4f]\n", timer.get_max_time(), timer.get_avg_time(), niters, argmax, max_radius);
+    if (verbose)
+    {
+        int myrank;
+        MPI_Comm_rank(comm, &myrank);
+        if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (initialize_root_hub) [argmax=%lld,max_radius=%.4f]\n", timer.get_max_time(), timer.get_avg_time(), niters, argmax, max_radius);
+    }
 }
 
 
 
-void DistCoverTree::compute_farthest_hub_pts()
+void DistCoverTree::compute_farthest_hub_pts(bool verbose)
 {
     MPITimer timer(comm, 0);
     timer.start_timer();
@@ -220,12 +223,15 @@ void DistCoverTree::compute_farthest_hub_pts()
 
     timer.stop_timer();
 
-    int myrank;
-    MPI_Comm_rank(comm, &myrank);
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (proc_chains) [hub_chains=%lu,levels=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, hub_chains.size(), nlevels);
+    if (verbose)
+    {
+        int myrank;
+        MPI_Comm_rank(comm, &myrank);
+        if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (proc_chains) [hub_chains=%lu,levels=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, hub_chains.size(), nlevels);
+    }
 }
 
-void DistCoverTree::update_hub_chains()
+void DistCoverTree::update_hub_chains(bool verbose)
 {
     MPITimer timer(comm, 0);
     timer.start_timer();
@@ -259,9 +265,12 @@ void DistCoverTree::update_hub_chains()
 
     timer.stop_timer();
 
-    int myrank;
-    MPI_Comm_rank(comm, &myrank);
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (update_chains) [hleaves=%lu,splits=%lu,exts=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, leaf_chains.size(), split_chains.size(), extended);
+    if (verbose)
+    {
+        int myrank;
+        MPI_Comm_rank(comm, &myrank);
+        if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (update_chains) [hleaves=%lu,splits=%lu,exts=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, leaf_chains.size(), split_chains.size(), extended);
+    }
 }
 
 int64_t DistCoverTree::batch_new_vertex(int64_t point_id, int64_t parent_id)
@@ -305,7 +314,7 @@ void DistCoverTree::add_batched_vertices()
     my_new_vertex_hub_ids.clear();
 }
 
-void DistCoverTree::process_leaf_chains()
+void DistCoverTree::process_leaf_chains(bool verbose)
 {
     MPITimer timer(comm, 0);
     timer.start_timer();
@@ -331,15 +340,22 @@ void DistCoverTree::process_leaf_chains()
     add_batched_vertices();
     timer.stop_timer();
 
-    MPI_Reduce(&mynlpts, &nlpts, 1, MPI_INT64_T, MPI_SUM, 0, comm);
-
-    int myrank;
-    MPI_Comm_rank(comm, &myrank);
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (proc_leaves) [leaf_pts=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, nlpts);
+    if (verbose)
+    {
+        int myrank;
+        MPI_Comm_rank(comm, &myrank);
+        MPI_Reduce(&mynlpts, &nlpts, 1, MPI_INT64_T, MPI_SUM, 0, comm);
+        if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (proc_leaves) [leaf_pts=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, nlpts);
+    }
 }
 
-void DistCoverTree::process_split_chains()
+void DistCoverTree::process_split_chains(bool verbose)
 {
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
+    int64_t mynsplts = 0, nsplts;
+
     if (!split_chains.empty())
     {
         unordered_map<int64_t, int64_t> hub_pt_id_updates;
@@ -375,8 +391,21 @@ void DistCoverTree::process_split_chains()
             auto it = hub_pt_id_updates.find(closest_pt_id);
 
             if (it != hub_pt_id_updates.end())
+            {
+                mynsplts++;
                 my_hub_vtx_ids[i] = it->second;
+            }
         }
+    }
+
+    timer.stop_timer();
+
+    if (verbose)
+    {
+        int myrank;
+        MPI_Comm_rank(comm, &myrank);
+        MPI_Reduce(&mynsplts, &nsplts, 1, MPI_INT64_T, MPI_SUM, 0, comm);
+        if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (proc_splits) [split_pts=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, nsplts);
     }
 }
 
@@ -426,8 +455,11 @@ unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t
     return collected_points;
 }
 
-void DistCoverTree::update_dists_and_pointers()
+void DistCoverTree::update_dists_and_pointers(bool verbose)
 {
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
     vector<int64_t> point_ids;
 
     for (int64_t i = 0; i < mysize; ++i)
@@ -459,5 +491,14 @@ void DistCoverTree::update_dists_and_pointers()
                 my_hub_pt_ids[i] = last_chain_pt_id;
             }
         }
+    }
+
+    timer.stop_timer();
+
+    if (verbose)
+    {
+        int myrank;
+        MPI_Comm_rank(comm, &myrank);
+        if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (updates)\n", timer.get_max_time(), timer.get_avg_time(), niters);
     }
 }
