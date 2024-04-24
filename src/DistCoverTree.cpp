@@ -12,7 +12,13 @@
 #include <stdio.h>
 
 DistCoverTree::DistCoverTree(const vector<Point>& mypoints, double base, MPI_Comm comm)
-    : max_radius(-1), base(base), mysize(mypoints.size()), mypoints(mypoints), comm(comm)
+    : max_radius(-1),
+      base(base),
+      mysize(mypoints.size()),
+      mypoints(mypoints),
+      niters(0),
+      nlevels(0),
+      comm(comm)
 {
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
@@ -29,14 +35,15 @@ void DistCoverTree::build_tree()
 {
     initialize_root_hub();
 
-    //while (!hub_chains.empty())
-    //{
-        //compute_farthest_hub_pts();
-        //update_hub_chains();
-        //process_leaf_chains();
-        //process_split_chains();
-        //update_dists_and_pointers();
-    //}
+    while (!hub_chains.empty())
+    {
+        niters++;
+        compute_farthest_hub_pts();
+        update_hub_chains();
+        process_leaf_chains();
+        process_split_chains();
+        update_dists_and_pointers();
+    }
 }
 
 int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
@@ -56,6 +63,7 @@ int64_t DistCoverTree::add_vertex(int64_t point_id, int64_t parent_id)
 
     level.push_back(vertex_level);
     cover_map.insert({vertex_id, pow(base, -1. * vertex_level)});
+    nlevels = max(vertex_level+1, nlevels);
 
     return vertex_id;
 }
@@ -111,6 +119,7 @@ void DistCoverTree::initialize_root_hub()
 
     Point root_pt = mypoints.front();
     int64_t root_id = add_vertex(0, -1);
+    hub_chains.insert({root_id, {pt[root_id]}});
 
     MPI_Datatype MPI_POINT;
     Point::create_mpi_dtype(&MPI_POINT);
@@ -149,13 +158,16 @@ void DistCoverTree::initialize_root_hub()
 
     int myrank;
     MPI_Comm_rank(comm, &myrank);
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (initialize_root_hub) [argmax=%lld,max_radius=%.4f]\n", timer.get_max_time(), timer.get_avg_time(), argmax, max_radius);
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (initialize_root_hub) [argmax=%lld,max_radius=%.4f]\n", timer.get_max_time(), timer.get_avg_time(), niters, argmax, max_radius);
 }
 
 
 
 void DistCoverTree::compute_farthest_hub_pts()
 {
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
     unordered_map<int64_t, pair<int64_t, double>> my_argmaxes; // maps hub id to (point id, distance) pair
     transform(hub_chains.begin(), hub_chains.end(), inserter(my_argmaxes, my_argmaxes.end()),
             [](const auto& chain) { return make_pair(chain.first, make_pair(-1, -1.0)); });
@@ -205,13 +217,23 @@ void DistCoverTree::compute_farthest_hub_pts()
     {
         farthest_hub_pts.insert({hub_ids[i], {my_argmax_pairs[i].index, my_argmax_pairs[i].value}});
     }
+
+    timer.stop_timer();
+
+    int myrank;
+    MPI_Comm_rank(comm, &myrank);
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (proc_chains) [hub_chains=%lu,levels=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, hub_chains.size(), nlevels);
 }
 
 void DistCoverTree::update_hub_chains()
 {
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
     int64_t hub_id;
     pair<int64_t, double> farthest_pt;
     split_chains.clear(), leaf_chains.clear();
+    int64_t extended = 0;
 
     for (auto it = farthest_hub_pts.begin(); it != farthest_hub_pts.end(); ++it)
     {
@@ -231,8 +253,15 @@ void DistCoverTree::update_hub_chains()
         else
         {
             hub_chains.find(hub_id)->second.push_back(farthest_pt_id);
+            extended++;
         }
     }
+
+    timer.stop_timer();
+
+    int myrank;
+    MPI_Comm_rank(comm, &myrank);
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (update_chains) [hleaves=%lu,splits=%lu,exts=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, leaf_chains.size(), split_chains.size(), extended);
 }
 
 int64_t DistCoverTree::batch_new_vertex(int64_t point_id, int64_t parent_id)
@@ -278,6 +307,11 @@ void DistCoverTree::add_batched_vertices()
 
 void DistCoverTree::process_leaf_chains()
 {
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
+    int64_t mynlpts = 0, nlpts;
+
     if (!leaf_chains.empty())
     {
         for (int64_t i = 0; i < mysize; ++i)
@@ -286,6 +320,7 @@ void DistCoverTree::process_leaf_chains()
 
             if (leaf_chains.find(hub_id) != leaf_chains.end())
             {
+                mynlpts++;
                 batch_new_vertex(i + myoffset, hub_id);
                 my_hub_vtx_ids[i] = my_hub_pt_ids[i] = -1;
                 my_dists[i] = 0;
@@ -294,6 +329,13 @@ void DistCoverTree::process_leaf_chains()
     }
 
     add_batched_vertices();
+    timer.stop_timer();
+
+    MPI_Reduce(&mynlpts, &nlpts, 1, MPI_INT64_T, MPI_SUM, 0, comm);
+
+    int myrank;
+    MPI_Comm_rank(comm, &myrank);
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (proc_leaves) [leaf_pts=%lld]\n", timer.get_max_time(), timer.get_avg_time(), niters, nlpts);
 }
 
 void DistCoverTree::process_split_chains()
@@ -352,7 +394,7 @@ unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t
     for (int64_t id : point_ids)
         if (myoffset <= id && id < myoffset + mysize)
         {
-            sendbuf.push_back(mypoints[id]);
+            sendbuf.push_back(mypoints[id-myoffset]);
             myids.push_back(id);
         }
 
@@ -372,6 +414,8 @@ unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t
 
     MPI_Allgatherv(sendbuf.data(), sendcount, MPI_POINT, recvbuf.data(), recvcounts.data(), displs.data(), MPI_POINT, comm);
     MPI_Allgatherv(myids.data(), sendcount, MPI_INT64_T, ids.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
+
+    MPI_Type_free(&MPI_POINT);
 
     unordered_map<int64_t, Point> collected_points;
     collected_points.reserve(totrecv);

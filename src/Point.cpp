@@ -72,7 +72,7 @@ vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed
         points = random_points(num_points, var, seed);
         sendcounts.resize(nprocs);
         displs.resize(nprocs);
-        fill(sendcounts.begin(), sendcounts.end(), (num_points+nprocs-1)/nprocs);
+        fill(sendcounts.begin(), sendcounts.end(), num_points/nprocs);
         sendcounts.back() = num_points - (nprocs-1)*sendcounts.back();
         displs.front() = 0;
         partial_sum(sendcounts.begin(), sendcounts.end()-1, displs.begin()+1);

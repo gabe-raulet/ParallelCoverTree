@@ -31,6 +31,7 @@ private:
     vector<int64_t> pt, level;
     vector<vector<int64_t>> children;
     unordered_map<int64_t, double> cover_map;
+    int64_t niters, nlevels;
 
     vector<Point> mypoints;
     int64_t mysize, totsize, myoffset;

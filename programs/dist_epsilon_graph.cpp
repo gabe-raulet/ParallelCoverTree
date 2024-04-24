@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
         seed = dis(gen);
     }
 
-    if (!myrank) fprintf(stderr, "program: %s\ncommit: " GIT_COMMIT "\ndate and time: %s\n\n", program_str(argc, argv).c_str(), return_current_time_and_date().c_str());
+    if (!myrank) fprintf(stderr, "program: %s\ncommit: " GIT_COMMIT "\ndate and time: %s\nMPI ranks: %d\n\n", program_str(argc, argv).c_str(), return_current_time_and_date().c_str(), nprocs);
 
     MPITimer timer(MPI_COMM_WORLD, 0);
 
