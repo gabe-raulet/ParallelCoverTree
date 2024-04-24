@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <utility>
 #include <string>
+#include <mpi.h>
 
 using namespace std;
 
@@ -30,7 +31,10 @@ public:
 
     string repr() const;
 
+    static void create_mpi_dtype(MPI_Datatype *MPI_POINT);
+
     static vector<Point> random_points(int64_t num_points, double var, int seed);
+    static vector<Point> dist_random_points(int64_t num_points, double var, int seed, int root, MPI_Comm comm);
 
     friend ostream& operator<<(ostream& os, const Point& pt)
     {

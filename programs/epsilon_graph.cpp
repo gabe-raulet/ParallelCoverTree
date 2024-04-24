@@ -1,22 +1,15 @@
 #include "Point.h"
 #include "CoverTree.h"
+#include "MyTimer.h"
 #include "read_args.h"
 #include "version.h"
 #include <iostream>
+#include <sstream>
 #include <chrono>
 #include <assert.h>
 #include <stdio.h>
 
 using namespace std;
-
-template <class T>
-struct MyTimer
-{
-    using clock = chrono::high_resolution_clock;
-    using duration = chrono::duration<T>;
-};
-
-using mytimer = MyTimer<double>;
 
 bool graphs_equal(const vector<vector<int64_t>> g1, const vector<vector<int64_t>> g2);
 
@@ -30,6 +23,7 @@ int main(int argc, char *argv[])
     double radius;
     double base = 2.0;
     int seed = -1;
+    int skip_test = 0;
 
     if (argc == 1 || find_arg_idx(argc, argv, "-h") >= 0)
     {
@@ -39,6 +33,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "         -r FLOAT  radius [required]\n");
         fprintf(stderr, "         -s INT    rng seed [default: random]\n");
         fprintf(stderr, "         -C FLOAT  cover base [default: %.2f]\n", base);
+        fprintf(stderr, "         -F        skip test\n");
+        fprintf(stderr, "         -h        help message\n");
         return -1;
     }
 
@@ -47,6 +43,7 @@ int main(int argc, char *argv[])
     radius = read_double_arg(argc, argv, "-r", NULL);
     seed = read_int_arg(argc, argv, "-s", &seed);
     base = read_double_arg(argc, argv, "-C", &base);
+    skip_test = !!(find_arg_idx(argc, argv, "-F") >= 0);
 
     if (seed < 0)
     {
@@ -77,11 +74,15 @@ int main(int argc, char *argv[])
     auto tree_start = mytimer::clock::now();
 
     CoverTree tree(points, base);
+    tree.build_tree();
 
     auto tree_end = mytimer::clock::now();
     double tree_time = mytimer::duration(tree_end - tree_start).count();
 
+    tree.print_timing_results();
     fprintf(stderr, "[time=%.4f] :: (build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", tree_time, tree.num_vertices(), tree.num_levels(), base);
+
+    if (skip_test) return 0;
 
     /*
      * Build epsilon graph from cover tree
