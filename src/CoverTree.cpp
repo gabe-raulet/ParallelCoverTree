@@ -82,20 +82,28 @@ void CoverTree::initialize_root_hub(bool verbose)
 
 void CoverTree::compute_farthest_hub_pts(bool verbose)
 {
+    /*
+     * Go through all active hubs and find the point farthest from
+     * the hub's current chain.
+     */
+
     auto t1 = mytimer::clock::now();
 
     farthest_hub_pts.clear();
     transform(hub_chains.begin(), hub_chains.end(), inserter(farthest_hub_pts, farthest_hub_pts.end()),
               [](auto pair) { return make_pair(pair.first, make_pair(-1, -1.0)); });
 
+    // go through points
     for (int64_t i = 0; i < num_points(); ++i)
     {
         int64_t hub_id = hub_vtx_ids[i];
 
+        // if point is in an active hub
         if (hub_id >= 0)
         {
             auto& it = farthest_hub_pts.find(hub_id)->second;
 
+            // update hub's farthest point if necessary
             if (dists[i] > it.second)
             {
                 it.first = i;
@@ -113,6 +121,15 @@ void CoverTree::compute_farthest_hub_pts(bool verbose)
 
 void CoverTree::update_hub_chains(bool verbose)
 {
+    /*
+     * Go through each hub and, based on the computed farthest point,
+     * determine whether the farthest point indicates:
+     *
+     *     (i) that the hub is (a) a singleton or (b) a set of duplicate points -> leaf chain
+     *    (ii) that the hub chain should be partitioned into new hubs -> split chain
+     *   (iii) that the hub chain is incomplete -> extend chain
+     */
+
     auto t1 = mytimer::clock::now();
 
     int64_t hub_id;
@@ -151,6 +168,10 @@ void CoverTree::update_hub_chains(bool verbose)
 
 void CoverTree::process_leaf_chains(bool verbose)
 {
+    /*
+     * Remove all leaf hubs and add associated vertices
+     */
+
     auto t1 = mytimer::clock::now();
     int64_t nlpts = 0;
 
@@ -179,6 +200,12 @@ void CoverTree::process_leaf_chains(bool verbose)
 
 void CoverTree::process_split_chains(bool verbose)
 {
+    /*
+     * Partition split hubs into new hubs, one for each point in the split chain.
+     * All the points in the split hub are assigned to one of the new hubs,
+     * and vertices for each new hub are added. The original split hub is deleted.
+     */
+
     auto t1 = mytimer::clock::now();
 
     int64_t nsplts = 0;
@@ -205,6 +232,7 @@ void CoverTree::process_split_chains(bool verbose)
             hub_chains.erase(split_chains[i]);
         }
 
+        // add new hubs and vertices
         for (int64_t i = 0; i < new_hub_pts.size(); ++i)
         {
             int64_t vtx_id = add_vertex(new_hub_pts[i], new_hub_ids[i]);
@@ -212,6 +240,7 @@ void CoverTree::process_split_chains(bool verbose)
             hub_pt_id_updates.insert({new_hub_pts[i], vtx_id});
         }
 
+        // reassign points in original hub to one of the new hubs
         for (int64_t i = 0; i < num_points(); ++i)
         {
             int64_t closest_pt_id = hub_pt_ids[i];
@@ -234,6 +263,11 @@ void CoverTree::process_split_chains(bool verbose)
 
 void CoverTree::update_dists_and_pointers(bool verbose)
 {
+    /*
+     * Now that hubs have been split and/or extended, go through
+     * all the points and update their hub pointers and distances
+     */
+
     auto t1 = mytimer::clock::now();
 
     for (int64_t i = 0; i < num_points(); ++i)

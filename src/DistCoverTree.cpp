@@ -168,6 +168,11 @@ void DistCoverTree::initialize_root_hub(bool verbose)
 
 void DistCoverTree::compute_farthest_hub_pts(bool verbose)
 {
+    /*
+     * Go through all active hubs and find the point farthest from
+     * the hub's current chain.
+     */
+
     MPITimer timer(comm, 0);
     timer.start_timer();
 
@@ -175,14 +180,17 @@ void DistCoverTree::compute_farthest_hub_pts(bool verbose)
     transform(hub_chains.begin(), hub_chains.end(), inserter(my_argmaxes, my_argmaxes.end()),
             [](const auto& chain) { return make_pair(chain.first, make_pair(-1, -1.0)); });
 
+    // go through local points
     for (int64_t i = 0; i < mysize; ++i)
     {
         int64_t hub_id = my_hub_vtx_ids[i];
 
+        // if point is in active hub
         if (hub_id >= 0)
         {
             auto& it = my_argmaxes.find(hub_id)->second;
 
+            // update hub's farthest point if necessary
             if (my_dists[i] > it.second)
             {
                 it.first = i;
@@ -190,6 +198,12 @@ void DistCoverTree::compute_farthest_hub_pts(bool verbose)
             }
         }
     }
+
+    /*
+     * Now each processor knows which point within its local points
+     * is farthest within each hub. To determine the global farthest
+     * point for each hub we do an argmax reduction across all processors
+     */
 
     vector<int64_t> hub_ids;
     vector<ArgmaxPair> my_argmax_pairs;
@@ -233,6 +247,19 @@ void DistCoverTree::compute_farthest_hub_pts(bool verbose)
 
 void DistCoverTree::update_hub_chains(bool verbose)
 {
+    /*
+     * Go through each hub and, based on the computed farthest point,
+     * determine whether the farthest point indicates:
+     *
+     *     (i) that the hub is (a) a singleton or (b) a set of duplicate points -> leaf chain
+     *    (ii) that the hub chain should be partitioned into new hubs -> split chain
+     *   (iii) that the hub chain is incomplete -> extend chain
+     *
+     * Because the hubs and their farthest points are global, the routine
+     * below is run indentically (and redundantly) on all processors with
+     * no synchronization
+     */
+
     MPITimer timer(comm, 0);
     timer.start_timer();
 
@@ -316,6 +343,16 @@ void DistCoverTree::add_batched_vertices()
 
 void DistCoverTree::process_leaf_chains(bool verbose)
 {
+    /*
+     * Remove all leaf hubs and add associated vertices. Each
+     * processor determines which of its own points are in a
+     * leaf hub and accordingly removes it from the active set of points.
+     *
+     * Each processor batches the new added vertices it is contributing,
+     * and at the end we allgather the batched vertices each processor
+     * contributed and they all add them to their local copy of the tree.
+     */
+
     MPITimer timer(comm, 0);
     timer.start_timer();
 
@@ -351,6 +388,15 @@ void DistCoverTree::process_leaf_chains(bool verbose)
 
 void DistCoverTree::process_split_chains(bool verbose)
 {
+    /*
+     * Partition split hubs into new hubs, one for each point in the split chain.
+     * All the points in the split hub are assigned to one of the new hubs,
+     * and vertices for each new hub are added. The original split hub is deleted.
+     *
+     * Because the split chains are globally accessible, all processors can add
+     * their new split vertices redundantly in parallel with no synchronization.
+     */
+
     MPITimer timer(comm, 0);
     timer.start_timer();
 
@@ -411,6 +457,10 @@ void DistCoverTree::process_split_chains(bool verbose)
 
 unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t>& point_ids) const
 {
+    /*
+     * Allgather points based on list of global point ids.
+     */
+
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
@@ -457,6 +507,11 @@ unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t
 
 void DistCoverTree::update_dists_and_pointers(bool verbose)
 {
+    /*
+     * Now that hubs have been split and/or extended, go through
+     * all the points and update their hub pointers and distances.
+     */
+
     MPITimer timer(comm, 0);
     timer.start_timer();
 
