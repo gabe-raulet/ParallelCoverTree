@@ -32,6 +32,7 @@ private:
     vector<Point> points;
     vector<int64_t> pt, level;
     vector<vector<int64_t>> children;
+    int64_t nlevels, niters;
 
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double vertex_ball_radius(int64_t vertex_id) const;

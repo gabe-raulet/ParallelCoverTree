@@ -12,7 +12,7 @@
 #include <cassert>
 #include <stdio.h>
 
-CoverTree::CoverTree(const vector<Point>& points, double base) : max_radius(-1), base(base), points(points) {}
+CoverTree::CoverTree(const vector<Point>& points, double base) : max_radius(-1), base(base), points(points), nlevels(0), niters(0) {}
 
 int64_t CoverTree::num_points() const { return points.size(); }
 int64_t CoverTree::num_vertices() const { return pt.size(); }
@@ -35,6 +35,8 @@ int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
         children[parent_id].push_back(vertex_id);
     }
     else vertex_level = 0;
+
+    nlevels = max(vertex_level+1, nlevels);
 
     level.push_back(vertex_level);
     return vertex_id;
@@ -75,7 +77,7 @@ void CoverTree::initialize_root_hub()
     double t = mytimer::duration(t2-t1).count();
     initialize_root_hub_times.push_back(t);
 
-    fprintf(stderr, "[time=%.4f] :: (initialize_root_hub) [argmax=%lld,max_radius=%.4f]\n", t, argmax, max_radius);
+    fprintf(stderr, "[time=%.4f,itr=%lld] :: (init_root_hub) [argmax=%lld,max_radius=%.4f]\n", t, niters, argmax, max_radius);
 }
 
 void CoverTree::compute_farthest_hub_pts()
@@ -105,6 +107,8 @@ void CoverTree::compute_farthest_hub_pts()
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
     compute_farthest_hub_pts_times.push_back(t);
+
+    fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_chains) [hub_chains=%lu,levels=%lld]\n", t, niters, hub_chains.size(), num_levels());
 }
 
 void CoverTree::update_hub_chains()
@@ -114,6 +118,7 @@ void CoverTree::update_hub_chains()
     int64_t hub_id;
     pair<int64_t, double> farthest_pt;
     split_chains.clear(), leaf_chains.clear();
+    int64_t extended = 0;
 
     for (auto it = farthest_hub_pts.begin(); it != farthest_hub_pts.end(); ++it)
     {
@@ -133,17 +138,21 @@ void CoverTree::update_hub_chains()
         else
         {
             hub_chains.find(hub_id)->second.push_back(farthest_pt_id);
+            extended++;
         }
     }
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
     update_hub_chains_times.push_back(t);
+
+    fprintf(stderr, "[time=%.4f,itr=%lld] :: (update_chains) [hleaves=%lu,splits=%lu,exts=%lld]\n", t, niters, leaf_chains.size(), split_chains.size(), extended);
 }
 
 void CoverTree::process_leaf_chains()
 {
     auto t1 = mytimer::clock::now();
+    int64_t nlpts = 0;
 
     if (!leaf_chains.empty())
     {
@@ -153,6 +162,7 @@ void CoverTree::process_leaf_chains()
 
             if (leaf_chains.find(hub_id) != leaf_chains.end())
             {
+                nlpts++;
                 add_vertex(i, hub_id);
                 hub_vtx_ids[i] = hub_pt_ids[i] = -1;
                 dists[i] = 0;
@@ -163,11 +173,15 @@ void CoverTree::process_leaf_chains()
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
     process_leaf_chains_times.push_back(t);
+
+    fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_leaves) [leaf_pts=%lld]\n", t, niters, nlpts);
 }
 
 void CoverTree::process_split_chains()
 {
     auto t1 = mytimer::clock::now();
+
+    int64_t nsplts = 0;
 
     if (!split_chains.empty())
     {
@@ -204,13 +218,18 @@ void CoverTree::process_split_chains()
             auto it = hub_pt_id_updates.find(closest_pt_id);
 
             if (it != hub_pt_id_updates.end())
+            {
+                nsplts++;
                 hub_vtx_ids[i] = it->second;
+            }
         }
     }
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
     process_split_chains_times.push_back(t);
+
+    fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_splits) [split_pts=%lld]\n", t, niters, nsplts);
 }
 
 void CoverTree::update_dists_and_pointers()
@@ -238,6 +257,8 @@ void CoverTree::update_dists_and_pointers()
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
     update_dists_and_pointers_times.push_back(t);
+
+    fprintf(stderr, "[time=%.4f,itr=%lld] :: (updates)\n", t, niters);
 }
 
 void CoverTree::build_tree()
@@ -246,6 +267,7 @@ void CoverTree::build_tree()
 
     while (!hub_chains.empty())
     {
+        niters++;
         compute_farthest_hub_pts();
         update_hub_chains();
         process_leaf_chains();
