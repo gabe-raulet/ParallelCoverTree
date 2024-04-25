@@ -55,12 +55,15 @@ private:
     void process_split_chains(bool verbose = false);
     void update_dists_and_pointers(bool verbose = false);
 
-    vector<double> initialize_root_hub_times;
-    vector<double> compute_farthest_hub_pts_times;
-    vector<double> update_hub_chains_times;
-    vector<double> process_leaf_chains_times;
-    vector<double> process_split_chains_times;
-    vector<double> update_dists_and_pointers_times;
+    double overall_time;
+    double initialize_root_hub_time;
+    double compute_farthest_hub_pts_time;
+    double update_hub_chains_time;
+    double process_leaf_chains_time;
+    double process_split_chains_time;
+    double update_dists_and_pointers_time;
+
+    void set_times_to_zero();
 };
 
 #endif

@@ -75,7 +75,8 @@ void CoverTree::initialize_root_hub(bool verbose)
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
-    initialize_root_hub_times.push_back(t);
+    initialize_root_hub_time += t;
+    overall_time += t;
 
     if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (init_root_hub) [argmax=%lld,max_radius=%.4f]\n", t, niters, argmax, max_radius);
 }
@@ -114,7 +115,8 @@ void CoverTree::compute_farthest_hub_pts(bool verbose)
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
-    compute_farthest_hub_pts_times.push_back(t);
+    compute_farthest_hub_pts_time += t;
+    overall_time += t;
 
     if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_chains) [hub_chains=%lu,levels=%lld]\n", t, niters, hub_chains.size(), num_levels());
 }
@@ -161,7 +163,8 @@ void CoverTree::update_hub_chains(bool verbose)
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
-    update_hub_chains_times.push_back(t);
+    update_hub_chains_time += t;
+    overall_time += t;
 
     if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (update_chains) [hleaves=%lu,splits=%lu,exts=%lld]\n", t, niters, leaf_chains.size(), split_chains.size(), extended);
 }
@@ -193,7 +196,8 @@ void CoverTree::process_leaf_chains(bool verbose)
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
-    process_leaf_chains_times.push_back(t);
+    process_leaf_chains_time += t;
+    overall_time += t;
 
     if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_leaves) [leaf_pts=%lld]\n", t, niters, nlpts);
 }
@@ -256,7 +260,8 @@ void CoverTree::process_split_chains(bool verbose)
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
-    process_split_chains_times.push_back(t);
+    process_split_chains_time += t;
+    overall_time += t;
 
     if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (proc_splits) [split_pts=%lld]\n", t, niters, nsplts);
 }
@@ -290,13 +295,26 @@ void CoverTree::update_dists_and_pointers(bool verbose)
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
-    update_dists_and_pointers_times.push_back(t);
+    update_dists_and_pointers_time += t;
+    overall_time += t;
 
     if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (updates)\n", t, niters);
 }
 
+void CoverTree::set_times_to_zero()
+{
+    overall_time = 0;
+    initialize_root_hub_time = 0;
+    compute_farthest_hub_pts_time = 0;
+    update_hub_chains_time = 0;
+    process_leaf_chains_time = 0;
+    process_split_chains_time = 0;
+    update_dists_and_pointers_time = 0;
+}
+
 void CoverTree::build_tree(bool verbose)
 {
+    set_times_to_zero();
     initialize_root_hub(verbose);
 
     while (!hub_chains.empty())
@@ -307,63 +325,17 @@ void CoverTree::build_tree(bool verbose)
         process_leaf_chains(verbose);
         process_split_chains(verbose);
         update_dists_and_pointers(verbose);
-
-        if (verbose)
-        {
-            double tc = compute_farthest_hub_pts_times.back();
-            double tu = update_hub_chains_times.back();
-            double tl = process_leaf_chains_times.back();
-            double ts = process_split_chains_times.back();
-            double td = update_dists_and_pointers_times.back();
-            double tall = tc + tu + tl + ts + td;
-            fprintf(stderr, "[time=%.4f,itr=%lld] :: time splits :: [%.1f,%.1f,%.1f,%.1f,%.1f]\n", tall, niters, 100.0*(tc/tall), 100.0*(tu/tall), 100.0*(tl/tall), 100.0*(ts/tall), 100.0*(td/tall));
-        }
     }
-}
-
-tuple<double, double, double> get_stats(const vector<double>& times)
-{
-    double tot = accumulate(times.cbegin(), times.cend(), 0.0, plus<double>());
-    double avg = tot / static_cast<double>(times.size());
-
-    vector<double> devs;
-    devs.reserve(times.size());
-
-    transform(times.cbegin(), times.cend(), back_inserter(devs), [&avg](double val) { return (val-avg) * (val-avg); });
-    double var = accumulate(devs.cbegin(), devs.cend(), 0.0, plus<double>()) / static_cast<double>(devs.size());
-
-    return {tot, avg, sqrt(var)};
 }
 
 void CoverTree::print_timing_results() const
 {
-    double overall = 0.0;
-    overall += std::get<0>(get_stats(initialize_root_hub_times));
-    overall += std::get<0>(get_stats(compute_farthest_hub_pts_times));
-    overall += std::get<0>(get_stats(update_hub_chains_times));
-    overall += std::get<0>(get_stats(process_leaf_chains_times));
-    overall += std::get<0>(get_stats(process_split_chains_times));
-    overall += std::get<0>(get_stats(update_dists_and_pointers_times));
-
-    double tot, avg, stddev;
-
-    tie(tot, avg, stddev) = get_stats(initialize_root_hub_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (initialize_root_hub)\n", tot, avg, stddev, 100.0*(tot/overall));
-
-    tie(tot, avg, stddev) = get_stats(compute_farthest_hub_pts_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (compute_farthest_hub_pts)\n", tot, avg, stddev, 100.0*(tot/overall));
-
-    tie(tot, avg, stddev) = get_stats(update_hub_chains_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (update_hub_chains)\n", tot, avg, stddev, 100.0*(tot/overall));
-
-    tie(tot, avg, stddev) = get_stats(process_leaf_chains_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (process_leaf_chains)\n", tot, avg, stddev, 100.0*(tot/overall));
-
-    tie(tot, avg, stddev) = get_stats(process_split_chains_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (process_split_chains)\n", tot, avg, stddev, 100.0*(tot/overall));
-
-    tie(tot, avg, stddev) = get_stats(update_dists_and_pointers_times);
-    fprintf(stderr, "[tottime=%.4f,avgtime=%.4f,sdtime=%.4f,percent=%.4f] :: (update_dists_and_pointers)\n", tot, avg, stddev, 100.0*(tot/overall));
+    fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (initialize_root_hub)\n", initialize_root_hub_time, 100.0*(initialize_root_hub_time/overall_time));
+    fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (compute_farthest_hub_pts)\n", compute_farthest_hub_pts_time, 100.0*(compute_farthest_hub_pts_time/overall_time));
+    fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (update_hub_chains)\n", update_hub_chains_time, 100.0*(update_hub_chains_time/overall_time));
+    fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (process_leaf_chains)\n", process_leaf_chains_time, 100.0*(process_leaf_chains_time/overall_time));
+    fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (process_split_chains)\n", process_split_chains_time, 100.0*(process_split_chains_time/overall_time));
+    fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (update_dists_and_pointers)\n", update_dists_and_pointers_time, 100.0*(update_dists_and_pointers_time/overall_time));
 }
 
 vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
