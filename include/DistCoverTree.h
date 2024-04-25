@@ -26,6 +26,8 @@ public:
     int64_t num_vertices() const { return pt.size(); }
     int64_t num_levels() const {return *max_element(level.begin(), level.end()) + 1; }
 
+    void print_timing_results() const;
+
 private:
     double max_radius, base;
     vector<int64_t> pt, level;
@@ -60,6 +62,16 @@ private:
     void process_leaf_chains(bool verbose = false);
     void process_split_chains(bool verbose = false);
     void update_dists_and_pointers(bool verbose = false);
+
+    double overall_time;
+    double initialize_root_hub_time;
+    double compute_farthest_hub_pts_time;
+    double update_hub_chains_time;
+    double process_leaf_chains_time;
+    double process_split_chains_time;
+    double update_dists_and_pointers_time;
+
+    void set_times_to_zero();
 };
 
 #endif

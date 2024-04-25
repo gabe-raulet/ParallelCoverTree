@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
     tree.build_tree(static_cast<bool>(verbose));
 
     timer.stop_timer();
+    tree.print_timing_results();
 
     if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", timer.get_max_time(), timer.get_avg_time(), tree.num_vertices(), tree.num_levels(), base);
 
