@@ -20,7 +20,7 @@ endif
 
 INCLUDES=-I./include
 
-all: epsilon_graph dist_epsilon_graph create_points
+all: epsilon_graph dist_epsilon_graph create_points build_graph
 
 install: epsilon_graph
 	cp epsilon_graph /global/homes/g/gabeh98/software/cover_tree
@@ -39,5 +39,8 @@ dist_epsilon_graph: programs/dist_epsilon_graph.cpp src/DistCoverTree.cpp includ
 create_points: programs/create_points.cpp src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
 	$(MPICXX) -o create_points $(INCLUDES) $(MPIFLAGS) programs/create_points.cpp src/Point.cpp src/read_args.cpp
 
+build_graph: programs/build_graph.cpp src/CoverTree.cpp include/CoverTree.h src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
+	$(MPICXX) -o build_graph $(INCLUDES) $(MPIFLAGS) programs/build_graph.cpp src/CoverTree.cpp src/Point.cpp src/read_args.cpp
+
 clean:
-	rm -rf *.dSYM *.bin *.fvecs epsilon_graph dist_epsilon_graph create_points version.h
+	rm -rf *.dSYM *.bin *.fvecs epsilon_graph dist_epsilon_graph create_points build_graph version.h
