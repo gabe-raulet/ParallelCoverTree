@@ -7,11 +7,14 @@ import time
 dim = 2
 
 def read_points(fname):
+    t = -time.perf_counter()
     with open(fname, "rb") as f:
         n = int.from_bytes(f.read(8), byteorder="little")
         data = np.zeros((n,dim), dtype=np.float32)
         for i in range(n):
             data[i] = np.frombuffer(f.read(4*dim), dtype=np.float32, count=dim)
+    t += time.perf_counter()
+    print(f"[time={t:.4f}] :: (read_points) [filename='{fname}']")
     return data
 
 def build_graph(data, radius):
@@ -19,16 +22,21 @@ def build_graph(data, radius):
     snn_model = build_snn_model(data)
     t += time.perf_counter()
     print(f"[time={t:.4f}] :: (build_snn_model) [n={data.shape[0]}]")
+    snn_time = t
 
     n_edges = 0
     edges = []
-    t = -time.perf_counter()
+    t = 0
     for i in range(len(data)):
+        t1 = -time.perf_counter()
         ind = snn_model.query_radius(data[i], radius, return_distance=False)
+        t1 += time.perf_counter()
+        t += t1
         n_edges += len(ind)
         edges.append(ind)
-    t += time.perf_counter()
-    print(f"[time={t:.4f}] :: (build_graph) [n_verts={data.shape[0]},n_edges={n_edges}]")
+    print(f"[time={t:.4f}] :: (queries)")
+    query_time = t
+    print(f"[time={query_time + snn_time:.4f}] :: (build_graph) [n_verts={data.shape[0]},n_edges={n_edges},avg_deg={n_edges/data.shape[0]:.4f},radius={radius:.3f}]")
     return edges, n_edges
 
 def write_graph(edges, n_edges, ofname):
