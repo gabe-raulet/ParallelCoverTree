@@ -6,5 +6,6 @@
 epsilon_graph
 dist_epsilon_graph
 create_points
+build_graph
 sgtree
 version.h
