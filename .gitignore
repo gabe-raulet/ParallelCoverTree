@@ -5,5 +5,6 @@
 *.swp
 epsilon_graph
 dist_epsilon_graph
+create_points
 sgtree
 version.h

@@ -29,12 +29,17 @@ public:
     double distance(const Point& rhs) const;
     friend double distance(const Point& p, const Point& q);
 
+    void fill_dest(float *dest) const { dest[0] = data[0], dest[1] = data[1]; }
+
     string repr() const;
 
     static void create_mpi_dtype(MPI_Datatype *MPI_POINT);
 
     static vector<Point> random_points(int64_t num_points, double var, int seed);
     static vector<Point> dist_random_points(int64_t num_points, double var, int seed, int root, MPI_Comm comm);
+
+    static vector<Point> from_file(const char *fname);
+    static void to_file(const vector<Point>& points, const char *fname);
 
     friend ostream& operator<<(ostream& os, const Point& pt)
     {

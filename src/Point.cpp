@@ -1,5 +1,6 @@
 #include "Point.h"
 #include <cmath>
+#include <cassert>
 #include <sstream>
 #include <iomanip>
 #include <numeric>
@@ -87,6 +88,58 @@ vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed
 
     MPI_Type_free(&MPI_POINT);
     return mypoints;
+}
+
+vector<Point> Point::from_file(const char *fname)
+{
+    int64_t n;
+    FILE *f;
+    vector<float> point_data;
+    vector<Point> points;
+
+    f = fopen(fname, "r");
+    assert(f != NULL);
+
+    fread(&n, sizeof(int64_t), 1, f);
+    point_data.resize(n*dim);
+    fread(point_data.data(), sizeof(float), dim*n, f);
+    fclose(f);
+
+    points.reserve(n);
+
+    for (int64_t i = 0; i < n; ++i)
+    {
+        points.emplace_back(&point_data[i*dim]);
+    }
+
+    return points;
+}
+
+void Point::to_file(const vector<Point>& points, const char *fname)
+{
+    int64_t n;
+    FILE *f;
+    vector<float> point_data;
+    float *dest;
+
+    n = points.size();
+    point_data.resize(n*dim);
+    dest = point_data.data();
+
+    for (int64_t i = 0; i < n; ++i)
+    {
+        const Point& p = points[i];
+        p.fill_dest(dest);
+        dest += 2;
+    }
+
+    f = fopen(fname, "w");
+    assert(f != NULL);
+
+    fwrite(&n, sizeof(int64_t), 1, f);
+    fwrite(point_data.data(), sizeof(float), dim*n, f);
+
+    fclose(f);
 }
 
 string Point::repr() const
