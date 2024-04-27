@@ -12,7 +12,7 @@
 #include <cassert>
 #include <stdio.h>
 
-CoverTree::CoverTree(const vector<Point>& points, double base) : max_radius(-1), base(base), points(points), nlevels(0), niters(0) {}
+CoverTree::CoverTree(const vector<Point>& points, double base) : max_radius(-1), base(base), points(points), nlevels(0), niters(0), num_active_pts(points.size()) {}
 
 int64_t CoverTree::num_points() const { return points.size(); }
 int64_t CoverTree::num_vertices() const { return pt.size(); }
@@ -187,6 +187,7 @@ void CoverTree::process_leaf_chains(bool verbose)
             if (leaf_chains.find(hub_id) != leaf_chains.end())
             {
                 nlpts++;
+                num_active_pts--;
                 add_vertex(i, hub_id);
                 hub_vtx_ids[i] = hub_pt_ids[i] = -1;
                 dists[i] = 0;
@@ -298,7 +299,7 @@ void CoverTree::update_dists_and_pointers(bool verbose)
     update_dists_and_pointers_time += t;
     overall_time += t;
 
-    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (updates)\n", t, niters);
+    if (verbose) fprintf(stderr, "[time=%.4f,itr=%lld] :: (updates) [active_pts=%lld]\n", t, niters, num_active_pts);
 }
 
 void CoverTree::set_times_to_zero()
