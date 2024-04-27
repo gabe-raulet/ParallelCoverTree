@@ -22,8 +22,10 @@ INCLUDES=-I./include
 
 all: epsilon_graph dist_epsilon_graph create_points build_graph dist_build_graph
 
-install: epsilon_graph
-	cp epsilon_graph /global/homes/g/gabeh98/software/cover_tree
+install: create_points build_graph dist_build_graph
+	cp create_points /global/homes/g/gabeh98/software/cover_tree
+	cp build_graph /global/homes/g/gabeh98/software/cover_tree
+	cp dist_build_graph /global/homes/g/gabeh98/software/cover_tree
 
 .PHONY: version.h
 
