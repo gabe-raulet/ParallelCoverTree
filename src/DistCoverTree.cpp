@@ -65,12 +65,12 @@ void DistCoverTree::print_timing_results() const
 
     if (!myrank)
     {
-        fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (initialize_root_hub)\n", initialize_root_hub_time, 100.0*(initialize_root_hub_time/overall_time));
-        fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (compute_farthest_hub_pts)\n", compute_farthest_hub_pts_time, 100.0*(compute_farthest_hub_pts_time/overall_time));
-        fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (update_hub_chains)\n", update_hub_chains_time, 100.0*(update_hub_chains_time/overall_time));
-        fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (process_leaf_chains)\n", process_leaf_chains_time, 100.0*(process_leaf_chains_time/overall_time));
-        fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (process_split_chains)\n", process_split_chains_time, 100.0*(process_split_chains_time/overall_time));
-        fprintf(stderr, "[tottime=%.4f,percent=%.4f] :: (update_dists_and_pointers)\n", update_dists_and_pointers_time, 100.0*(update_dists_and_pointers_time/overall_time));
+        fprintf(stderr, "[tottime=%.4f,percent=%.2f] :: (initialize_root_hub)\n", initialize_root_hub_time, 100.0*(initialize_root_hub_time/overall_time));
+        fprintf(stderr, "[tottime=%.4f,percent=%.2f] :: (compute_farthest_hub_pts)\n", compute_farthest_hub_pts_time, 100.0*(compute_farthest_hub_pts_time/overall_time));
+        fprintf(stderr, "[tottime=%.4f,percent=%.2f] :: (update_hub_chains)\n", update_hub_chains_time, 100.0*(update_hub_chains_time/overall_time));
+        fprintf(stderr, "[tottime=%.4f,percent=%.2f] :: (process_leaf_chains)\n", process_leaf_chains_time, 100.0*(process_leaf_chains_time/overall_time));
+        fprintf(stderr, "[tottime=%.4f,percent=%.2f] :: (process_split_chains)\n", process_split_chains_time, 100.0*(process_split_chains_time/overall_time));
+        fprintf(stderr, "[tottime=%.4f,percent=%.2f] :: (update_dists_and_pointers)\n", update_dists_and_pointers_time, 100.0*(update_dists_and_pointers_time/overall_time));
     }
 }
 
