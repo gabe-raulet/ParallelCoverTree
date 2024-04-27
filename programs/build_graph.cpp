@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
     char *ofname = NULL;
     double base = 2.0;
     bool verbose = false;
+    bool skip_graph = false;
 
     if (argc == 1 || find_arg_idx(argc, argv, "-h") >= 0)
     {
@@ -31,6 +32,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "         -r FLOAT  radius [required]\n");
         fprintf(stderr, "         -C FLOAT  cover base [default: %.2f]\n", base);
         fprintf(stderr, "         -o FILE   output filename\n");
+        fprintf(stderr, "         -S        skip graph construction\n");
         fprintf(stderr, "         -v        verbose\n");
         fprintf(stderr, "         -h        help message\n");
         return -1;
@@ -40,6 +42,7 @@ int main(int argc, char *argv[])
     ifname = read_string_arg(argc, argv, "-i", NULL);
     base = read_double_arg(argc, argv, "-C", &base);
     verbose = (find_arg_idx(argc, argv, "-v") >= 0);
+    skip_graph = (find_arg_idx(argc, argv, "-S") >= 0);
 
     if (find_arg_idx(argc, argv, "-o") >= 0)
     {
@@ -67,6 +70,8 @@ int main(int argc, char *argv[])
 
     tree.print_timing_results();
     fprintf(stderr, "[time=%.4f] :: (build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", tree_time, tree.num_vertices(), tree.num_levels(), base);
+
+    if (skip_graph) return 0;
 
     auto graph_start = mytimer::clock::now();
 
