@@ -38,6 +38,8 @@ public:
     static vector<Point> random_points(int64_t num_points, double var, int seed);
     static vector<Point> dist_random_points(int64_t num_points, double var, int seed, int root, MPI_Comm comm);
 
+    static vector<Point> scatter(const vector<Point>& points, int root, MPI_Comm comm);
+
     static vector<Point> from_file(const char *fname);
     static void to_file(const vector<Point>& points, const char *fname);
 

@@ -57,23 +57,22 @@ void Point::create_mpi_dtype(MPI_Datatype *MPI_POINT)
     MPI_Type_commit(MPI_POINT);
 }
 
-vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed, int root, MPI_Comm comm)
+vector<Point> Point::scatter(const vector<Point>& points, int root, MPI_Comm comm)
 {
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
 
-    vector<Point> points, mypoints;
+    vector<Point> mypoints;
     vector<int> sendcounts, displs;
     int recvcount;
 
     if (myrank == root)
     {
-        points = random_points(num_points, var, seed);
         sendcounts.resize(nprocs);
         displs.resize(nprocs);
-        fill(sendcounts.begin(), sendcounts.end(), num_points/nprocs);
-        sendcounts.back() = num_points - (nprocs-1)*sendcounts.back();
+        fill(sendcounts.begin(), sendcounts.end(), points.size()/nprocs);
+        sendcounts.back() = points.size() - (nprocs-1)*sendcounts.back();
         displs.front() = 0;
         partial_sum(sendcounts.begin(), sendcounts.end()-1, displs.begin()+1);
     }
@@ -88,6 +87,19 @@ vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed
 
     MPI_Type_free(&MPI_POINT);
     return mypoints;
+}
+
+vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed, int root, MPI_Comm comm)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<Point> points;
+
+    if (myrank == root) points = random_points(num_points, var, seed);
+
+    return scatter(points, root, comm);
 }
 
 vector<Point> Point::from_file(const char *fname)
