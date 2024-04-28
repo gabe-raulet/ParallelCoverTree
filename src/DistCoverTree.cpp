@@ -290,7 +290,7 @@ void DistCoverTree::update_hub_chains(bool verbose)
      *   (iii) that the hub chain is incomplete -> extend chain
      *
      * Because the hubs and their farthest points are global, the routine
-     * below is run indentically (and redundantly) on all processors with
+     * below is run identically (and redundantly) on all processors with
      * no synchronization
      */
 

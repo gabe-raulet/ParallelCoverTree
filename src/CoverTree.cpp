@@ -373,3 +373,23 @@ vector<vector<int64_t>> CoverTree::build_epsilon_graph(double radius) const
 
     return graph;
 }
+
+unordered_map<int64_t, vector<int64_t>> CoverTree::get_hub_points() const
+{
+    unordered_map<int64_t, vector<int64_t>> hub_points;
+    transform(hub_chains.begin(), hub_chains.end(), inserter(hub_points, hub_points.end()),
+             [](auto pair) { return make_pair(pair.first, vector<int64_t>()); });
+
+    for (int64_t i = 0; i < num_points(); ++i)
+    {
+        int64_t hub_id = hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            auto& pts = hub_points.find(hub_id)->second;
+            pts.push_back(i);
+        }
+    }
+
+    return hub_points;
+}

@@ -48,6 +48,8 @@ private:
     unordered_set<int64_t> leaf_chains;
     vector<int64_t> split_chains;
 
+    unordered_map<int64_t, vector<int64_t>> get_hub_points() const;
+
     void initialize_root_hub(bool verbose = false);
     void compute_farthest_hub_pts(bool verbose = false);
     void update_hub_chains(bool verbose = false);
