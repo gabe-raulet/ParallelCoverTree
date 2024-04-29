@@ -703,5 +703,9 @@ unordered_map<int64_t, int> DistCoverTree::get_hub_to_rank_assignments(double& l
         workloads[smallest_rank] += it->second;
     }
 
+    int64_t maxcount = *max_element(workloads.begin(), workloads.end());
+    int64_t totcount = accumulate(workloads.begin(), workloads.end(), 0, plus<int64_t>());
+    load_imbalance = ((nprocs + 0.0) * maxcount) / (totcount + 0.0);
+
     return hub_assignments;
 }
