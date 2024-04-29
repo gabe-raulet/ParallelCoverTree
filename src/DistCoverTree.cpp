@@ -609,3 +609,23 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
         if (verbose) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (updates)\n", timer.get_max_time(), timer.get_avg_time(), niters);
     }
 }
+
+unordered_map<int64_t, vector<int64_t>> DistCoverTree::get_my_hub_points() const
+{
+    unordered_map<int64_t, vector<int64_t>> my_hub_points;
+    transform(hub_chains.begin(), hub_chains.end(), inserter(my_hub_points, my_hub_points.end()),
+             [](auto pair) { return make_pair(pair.first, vector<int64_t>()); });
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t hub_id = my_hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            auto& pts = my_hub_points.find(hub_id)->second;
+            pts.push_back(i);
+        }
+    }
+
+    return my_hub_points;
+}
