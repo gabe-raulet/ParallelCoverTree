@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
     char *ofname = NULL;
     double base = 2.0;
     bool verbose = false;
+    bool skip_graph = false;
 
     if (argc == 1 || find_arg_idx(argc, argv, "-h") >= 0)
     {
@@ -36,6 +37,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "         -r FLOAT  radius [required]\n");
             fprintf(stderr, "         -C FLOAT  cover base [default: %.2f]\n", base);
             fprintf(stderr, "         -o FILE   output filename\n");
+            fprintf(stderr, "         -S        skip graph construction\n");
             fprintf(stderr, "         -v        verbose\n");
             fprintf(stderr, "         -h        help message\n");
         }
@@ -44,10 +46,15 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    radius = read_double_arg(argc, argv, "-r", NULL);
     ifname = read_string_arg(argc, argv, "-i", NULL);
     base = read_double_arg(argc, argv, "-C", &base);
     verbose = (find_arg_idx(argc, argv, "-v") >= 0);
+    skip_graph = (find_arg_idx(argc, argv, "-S") >= 0);
+
+    if (!skip_graph)
+    {
+        radius = read_double_arg(argc, argv, "-r", NULL);
+    }
 
     if (find_arg_idx(argc, argv, "-o") >= 0)
     {

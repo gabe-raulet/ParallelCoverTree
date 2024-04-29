@@ -505,6 +505,8 @@ unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t
 {
     /*
      * Allgather points based on list of global point ids.
+     * The @point_ids vector itself should only contain points
+     * available locally.
      */
 
     int myrank, nprocs;
@@ -561,7 +563,7 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
     MPITimer timer(comm, 0);
     timer.start_timer();
 
-    vector<int64_t> point_ids;
+    vector<int64_t> my_last_chain_pt_ids;
 
     for (int64_t i = 0; i < mysize; ++i)
     {
@@ -570,11 +572,11 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
         if (hub_id >= 0)
         {
             int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
-            point_ids.push_back(last_chain_pt_id);
+            my_last_chain_pt_ids.push_back(last_chain_pt_id);
         }
     }
 
-    unordered_map<int64_t, Point> collected_points = collect_points(point_ids);
+    unordered_map<int64_t, Point> last_chain_pt_ids = collect_points(my_last_chain_pt_ids);
 
     for (int64_t i = 0; i < mysize; ++i)
     {
@@ -584,7 +586,7 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
         {
             int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
             double lastdist = my_dists[i];
-            double curdist = mypoints[i].distance(collected_points.find(last_chain_pt_id)->second);
+            double curdist = mypoints[i].distance(last_chain_pt_ids.find(last_chain_pt_id)->second);
 
             if (curdist <= lastdist)
             {

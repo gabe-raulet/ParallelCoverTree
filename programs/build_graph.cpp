@@ -38,11 +38,15 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    radius = read_double_arg(argc, argv, "-r", NULL);
     ifname = read_string_arg(argc, argv, "-i", NULL);
     base = read_double_arg(argc, argv, "-C", &base);
     verbose = (find_arg_idx(argc, argv, "-v") >= 0);
     skip_graph = (find_arg_idx(argc, argv, "-S") >= 0);
+
+    if (!skip_graph)
+    {
+        radius = read_double_arg(argc, argv, "-r", NULL);
+    }
 
     if (find_arg_idx(argc, argv, "-o") >= 0)
     {
