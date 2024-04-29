@@ -610,6 +610,59 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
     }
 }
 
+unordered_map<int64_t, int64_t> DistCoverTree::get_hub_counts() const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    unordered_map<int64_t, int64_t> my_hub_counts, hub_counts;
+    vector<int64_t> my_flat_counts, flat_counts, idmap;
+
+    my_hub_counts = get_my_hub_counts();
+    int64_t num_hubs = my_hub_counts.size();
+
+    idmap.reserve(num_hubs);
+    my_flat_counts.reserve(num_hubs);
+    flat_counts.resize(num_hubs);
+
+    for (auto it = my_hub_counts.begin(); it != my_hub_counts.end(); ++it)
+    {
+        idmap.push_back(it->first);
+        my_flat_counts.push_back(it->second);
+    }
+
+    MPI_Allreduce(my_flat_counts.data(), flat_counts.data(), static_cast<int>(num_hubs), MPI_INT64_T, MPI_SUM, comm);
+
+    hub_counts.reserve(num_hubs);
+
+    for (int64_t i = 0; i < num_hubs; ++i)
+    {
+        hub_counts.insert({idmap[i], flat_counts[i]});
+    }
+
+    return hub_counts;
+}
+
+unordered_map<int64_t, int64_t> DistCoverTree::get_my_hub_counts() const
+{
+    unordered_map<int64_t, int64_t> my_hub_counts;
+    transform(hub_chains.begin(), hub_chains.end(), inserter(my_hub_counts, my_hub_counts.end()),
+            [](auto pair) { return make_pair(pair.first, 0); });
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t hub_id = my_hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            my_hub_counts.find(hub_id)->second++;
+        }
+    }
+
+    return my_hub_counts;
+}
+
 unordered_map<int64_t, vector<int64_t>> DistCoverTree::get_my_hub_points() const
 {
     unordered_map<int64_t, vector<int64_t>> my_hub_points;
@@ -628,4 +681,27 @@ unordered_map<int64_t, vector<int64_t>> DistCoverTree::get_my_hub_points() const
     }
 
     return my_hub_points;
+}
+
+unordered_map<int64_t, int> DistCoverTree::get_hub_to_rank_assignments(double& load_imbalance) const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<int64_t> workloads(nprocs, 0);
+    unordered_map<int64_t, int> hub_assignments;
+    unordered_map<int64_t, int64_t> hub_counts = get_hub_counts();
+
+    transform(hub_counts.begin(), hub_counts.end(), inserter(hub_assignments, hub_assignments.end()),
+            [](auto pair) { return make_pair(pair.first, 0); });
+
+    for (auto it = hub_counts.begin(); it != hub_counts.end(); ++it)
+    {
+        int smallest_rank = distance(workloads.begin(), min_element(workloads.begin(), workloads.end()));
+        hub_assignments.insert({it->first, smallest_rank});
+        workloads[smallest_rank] += it->second;
+    }
+
+    return hub_assignments;
 }

@@ -56,7 +56,10 @@ private:
     unordered_set<int64_t> leaf_chains;
     vector<int64_t> split_chains;
 
+    unordered_map<int64_t, int64_t> get_hub_counts() const;
+    unordered_map<int64_t, int64_t> get_my_hub_counts() const;
     unordered_map<int64_t, vector<int64_t>> get_my_hub_points() const;
+    unordered_map<int64_t, int> get_hub_to_rank_assignments(double& load_imbalance) const;
 
     void initialize_root_hub(bool verbose = false);
     void compute_farthest_hub_pts(bool verbose = false);
