@@ -709,3 +709,69 @@ unordered_map<int64_t, int> DistCoverTree::get_hub_to_rank_assignments(double& l
 
     return hub_assignments;
 }
+
+void DistCoverTree::redistribute_points(const unordered_map<int64_t, int>& assignments)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    int totsize = 0;
+    vector<int> sendcounts(nprocs, 0);
+    vector<vector<Point>> pt_sendbufs(nprocs);
+    vector<vector<int64_t>> id_sendbufs(nprocs);
+
+    for (int64_t i = myoffset; i < myoffset + mysize; ++i)
+    {
+        auto it = assignments.find(i);
+
+        if (it != assignments.end())
+        {
+            int dest = it->second;
+            pt_sendbufs[dest].push_back(mypoints[i-myoffset]);
+            id_sendbufs[dest].push_back(i);
+            sendcounts[dest]++;
+            totsize++;
+        }
+    }
+
+    vector<Point> pt_sendbuf;
+    vector<int64_t> id_sendbuf;
+
+    pt_sendbuf.reserve(totsize);
+    id_sendbuf.reserve(totsize);
+
+    for (int i = 0; i < nprocs; ++i)
+    {
+        pt_sendbuf.insert(pt_sendbuf.end(), pt_sendbufs[i].begin(), pt_sendbufs[i].end());
+        id_sendbuf.insert(id_sendbuf.end(), id_sendbufs[i].begin(), id_sendbufs[i].end());
+    }
+
+    vector<int> sdispls(nprocs);
+    sdispls.front() = 0;
+    partial_sum(sendcounts.begin(), sendcounts.end()-1, sdispls.begin()+1);
+
+    vector<int> recvcounts(nprocs);
+    vector<int> rdispls(nprocs);
+
+    MPI_Alltoall(sendcounts.data(), 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    rdispls.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, rdispls.begin()+1);
+
+    sharedpoints.resize(recvcounts.back() + rdispls.back());
+    sharedids.resize(sharedpoints.size());
+
+    MPI_Datatype MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+
+    MPI_Alltoallv(pt_sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_POINT, sharedpoints.data(), recvcounts.data(), rdispls.data(), MPI_POINT, comm);
+    MPI_Alltoallv(id_sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_INT64_T, sharedids.data(), recvcounts.data(), rdispls.data(), MPI_INT64_T, comm);
+
+    MPI_Type_free(&MPI_POINT);
+
+    sharedmap.reserve(sharedids.size());
+
+    for (int64_t i = 0; i < sharedids.size(); ++i)
+        sharedmap.insert({sharedids[i], i});
+}

@@ -39,6 +39,10 @@ private:
     int64_t mysize, totsize, myoffset;
     MPI_Comm comm;
 
+    vector<Point> sharedpoints;
+    vector<int64_t> sharedids;
+    unordered_map<int64_t, int64_t> sharedmap;
+
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double vertex_ball_radius(int64_t vertex_id) const;
 
@@ -60,6 +64,7 @@ private:
     unordered_map<int64_t, int64_t> get_my_hub_counts() const;
     unordered_map<int64_t, vector<int64_t>> get_my_hub_points() const;
     unordered_map<int64_t, int> get_hub_to_rank_assignments(double& load_imbalance) const;
+    void redistribute_points(const unordered_map<int64_t, int>& assignments);
 
     void initialize_root_hub(bool verbose = false);
     void compute_farthest_hub_pts(bool verbose = false);
