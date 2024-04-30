@@ -683,14 +683,15 @@ unordered_map<int64_t, vector<int64_t>> DistCoverTree::get_my_hub_points() const
     return my_hub_points;
 }
 
-unordered_map<int64_t, int> DistCoverTree::get_hub_to_rank_assignments(double& load_imbalance) const
+double DistCoverTree::compute_hub_to_rank_assignments()
 {
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
 
+    hub_assignments.clear();
+
     vector<int64_t> workloads(nprocs, 0);
-    unordered_map<int64_t, int> hub_assignments;
     unordered_map<int64_t, int64_t> hub_counts = get_hub_counts();
 
     transform(hub_counts.begin(), hub_counts.end(), inserter(hub_assignments, hub_assignments.end()),
@@ -705,12 +706,12 @@ unordered_map<int64_t, int> DistCoverTree::get_hub_to_rank_assignments(double& l
 
     int64_t maxcount = *max_element(workloads.begin(), workloads.end());
     int64_t totcount = accumulate(workloads.begin(), workloads.end(), 0, plus<int64_t>());
-    load_imbalance = ((nprocs + 0.0) * maxcount) / (totcount + 0.0);
+    double load_imbalance = ((nprocs + 0.0) * maxcount) / (totcount + 0.0);
 
-    return hub_assignments;
+    return load_imbalance;
 }
 
-void DistCoverTree::redistribute_points(const unordered_map<int64_t, int>& assignments)
+void DistCoverTree::redistribute_points()
 {
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
@@ -723,9 +724,9 @@ void DistCoverTree::redistribute_points(const unordered_map<int64_t, int>& assig
 
     for (int64_t i = myoffset; i < myoffset + mysize; ++i)
     {
-        auto it = assignments.find(i);
+        auto it = hub_assignments.find(i);
 
-        if (it != assignments.end())
+        if (it != hub_assignments.end())
         {
             int dest = it->second;
             pt_sendbufs[dest].push_back(mypoints[i-myoffset]);
