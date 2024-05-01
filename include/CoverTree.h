@@ -11,7 +11,7 @@ using namespace std;
 class CoverTree
 {
 public:
-    CoverTree(const vector<Point>& points, double base);
+    CoverTree(const vector<Point>& points, double base, double max_radius = -1);
 
     void build_tree(bool verbose = false);
 

@@ -12,7 +12,13 @@
 #include <cassert>
 #include <stdio.h>
 
-CoverTree::CoverTree(const vector<Point>& points, double base) : max_radius(-1), base(base), points(points), nlevels(0), niters(0), num_active_pts(points.size()) {}
+CoverTree::CoverTree(const vector<Point>& points, double base, double max_radius)
+    : max_radius(-1),
+      base(base),
+      points(points),
+      nlevels(0),
+      niters(0),
+      num_active_pts(points.size()) {}
 
 int64_t CoverTree::num_points() const { return points.size(); }
 int64_t CoverTree::num_vertices() const { return pt.size(); }
@@ -56,19 +62,21 @@ void CoverTree::initialize_root_hub(bool verbose)
     hub_pt_ids.resize(num_points());
 
     int64_t root_id = add_vertex(0, -1);
-    int64_t argmax = -1;
 
     for (int64_t i = 0; i < num_points(); ++i)
     {
         dists[i] = get_vertex_point(root_id).distance(get_point(i));
         hub_vtx_ids[i] = root_id;
         hub_pt_ids[i] = pt[root_id];
+    }
 
-        if (dists[i] > max_radius)
-        {
-            max_radius = dists[i];
-            argmax = i;
-        }
+    int64_t argmax = -1;
+
+    if (max_radius < 0)
+    {
+        auto argmax_it = max_element(dists.begin(), dists.end());
+        argmax = argmax_it - dists.begin();
+        max_radius = dists[argmax];
     }
 
     hub_chains.insert({root_id, {pt[root_id]}});
