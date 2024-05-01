@@ -47,7 +47,9 @@ void DistCoverTree::build_tree(bool verbose)
     set_times_to_zero();
     initialize_root_hub(verbose);
 
-    while (!hub_chains.empty())
+    double load_imbalance = numeric_limits<double>::max();
+
+    while (!hub_chains.empty() && load_imbalance > 1.25)
     {
         niters++;
         compute_farthest_hub_pts(verbose);
@@ -55,7 +57,11 @@ void DistCoverTree::build_tree(bool verbose)
         process_leaf_chains(verbose);
         process_split_chains(verbose);
         update_dists_and_pointers(verbose);
+        load_imbalance = compute_hub_to_rank_assignments(verbose);
     }
+
+    assert(!hub_chains.empty());
+    build_local_trees(verbose);
 }
 
 void DistCoverTree::print_timing_results() const
@@ -683,11 +689,14 @@ unordered_map<int64_t, vector<int64_t>> DistCoverTree::get_my_hub_points() const
     return my_hub_points;
 }
 
-double DistCoverTree::compute_hub_to_rank_assignments()
+double DistCoverTree::compute_hub_to_rank_assignments(bool verbose)
 {
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
+
+    MPITimer timer(comm, 0);
+    timer.start_timer();
 
     hub_assignments.clear();
 
@@ -708,71 +717,141 @@ double DistCoverTree::compute_hub_to_rank_assignments()
     int64_t totcount = accumulate(workloads.begin(), workloads.end(), 0, plus<int64_t>());
     double load_imbalance = ((nprocs + 0.0) * maxcount) / (totcount + 0.0);
 
+    timer.stop_timer();
+
+    if (!myrank && verbose)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (get_hub_assignments) [load_imbalance=%.4f]\n", timer.get_max_time(), timer.get_avg_time(), niters, load_imbalance);
+    }
+
     return load_imbalance;
 }
 
-void DistCoverTree::redistribute_points()
+struct PointInfo
 {
+    Point p;
+    int64_t pt_id;
+    int64_t hub_id;
+
+    PointInfo() {}
+    PointInfo(Point p, int64_t pt_id, int64_t hub_id) : p(p), pt_id(pt_id), hub_id(hub_id) {}
+
+    static void create_mpi_dtype(MPI_Datatype *dtype)
+    {
+        MPI_Datatype MPI_POINT;
+        Point::create_mpi_dtype(&MPI_POINT);
+
+        int blklens[3] = {1,1,1};
+        MPI_Aint disps[3] = {offsetof(PointInfo, p), offsetof(PointInfo, pt_id), offsetof(PointInfo, hub_id)};
+        MPI_Datatype types[3] = {MPI_POINT, MPI_INT64_T, MPI_INT64_T};
+        MPI_Type_create_struct(3, blklens, disps, types, dtype);
+        MPI_Type_commit(dtype);
+
+        MPI_Type_free(&MPI_POINT);
+    }
+};
+
+void DistCoverTree::build_local_trees(bool verbose)
+{
+    /*
+     * Input: unordered_map<int64_t, int> hub_assignments; // maps global hub ids to processor ranks
+     * Output 1: unordered_map<int64_t, vector<int64_t>> local_idmap; // maps locally stored hub ids to their local-global point idmap
+     * Output 2: unordered_map<int64_t, CoverTree> local_trees; // maps locally stored hub ids to their local cover tree
+     */
+
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
 
-    int totsize = 0;
-    vector<int> sendcounts(nprocs, 0);
-    vector<vector<Point>> pt_sendbufs(nprocs);
-    vector<vector<int64_t>> id_sendbufs(nprocs);
+    MPITimer timer(comm, 0);
+    timer.start_timer();
 
-    for (int64_t i = myoffset; i < myoffset + mysize; ++i)
+    /*
+     * Use @hub_assignments to fill outgoing buffers of global point ids and points.
+     */
+
+    int totsend = 0;
+    vector<int> sendcounts(nprocs, 0);
+    vector<vector<PointInfo>> sendbufs;
+
+    for (int64_t i = 0; i < mysize; ++i)
     {
-        auto it = hub_assignments.find(i);
+        int64_t hub_id = my_hub_vtx_ids[i];
+        auto it = hub_assignments.find(hub_id);
 
         if (it != hub_assignments.end())
         {
-            int dest = it->second;
-            pt_sendbufs[dest].push_back(mypoints[i-myoffset]);
-            id_sendbufs[dest].push_back(i);
-            sendcounts[dest]++;
-            totsize++;
+            int destrank = it->second;
+            sendbufs[destrank].emplace_back(mypoints[i], i+myoffset, hub_id);
+            sendcounts[destrank]++;
+            totsend++;
         }
     }
 
-    vector<Point> pt_sendbuf;
-    vector<int64_t> id_sendbuf;
-
-    pt_sendbuf.reserve(totsize);
-    id_sendbuf.reserve(totsize);
+    vector<PointInfo> sendbuf;
+    sendbuf.reserve(totsize);
 
     for (int i = 0; i < nprocs; ++i)
     {
-        pt_sendbuf.insert(pt_sendbuf.end(), pt_sendbufs[i].begin(), pt_sendbufs[i].end());
-        id_sendbuf.insert(id_sendbuf.end(), id_sendbufs[i].begin(), id_sendbufs[i].end());
+        sendbuf.insert(sendbuf.end(), sendbufs[i].begin(), sendbufs[i].end());
     }
 
     vector<int> sdispls(nprocs);
     sdispls.front() = 0;
     partial_sum(sendcounts.begin(), sendcounts.end()-1, sdispls.begin()+1);
 
-    vector<int> recvcounts(nprocs);
-    vector<int> rdispls(nprocs);
-
+    vector<int> recvcounts(nprocs), rdispls(nprocs);
     MPI_Alltoall(sendcounts.data(), 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
 
     rdispls.front() = 0;
     partial_sum(recvcounts.begin(), recvcounts.end()-1, rdispls.begin()+1);
 
-    sharedpoints.resize(recvcounts.back() + rdispls.back());
-    sharedids.resize(sharedpoints.size());
+    vector<PointInfo> recvbuf(recvcounts.back() + rdispls.back());
 
-    MPI_Datatype MPI_POINT;
-    Point::create_mpi_dtype(&MPI_POINT);
+    MPI_Datatype MPI_POINT_INFO;
+    PointInfo::create_mpi_dtype(&MPI_POINT_INFO);
 
-    MPI_Alltoallv(pt_sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_POINT, sharedpoints.data(), recvcounts.data(), rdispls.data(), MPI_POINT, comm);
-    MPI_Alltoallv(id_sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_INT64_T, sharedids.data(), recvcounts.data(), rdispls.data(), MPI_INT64_T, comm);
+    MPI_Alltoallv(sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_POINT_INFO,
+                  recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_POINT_INFO, comm);
 
-    MPI_Type_free(&MPI_POINT);
+    MPI_Type_free(&MPI_POINT_INFO);
 
-    sharedmap.reserve(sharedids.size());
+    unordered_map<int64_t, vector<Point>> local_pts;
 
-    for (int64_t i = 0; i < sharedids.size(); ++i)
-        sharedmap.insert({sharedids[i], i});
+    for (const PointInfo& pi : recvbuf)
+    {
+        auto it = local_idmap.find(pi.hub_id);
+
+        if (it == local_idmap.end())
+        {
+            vector<int64_t> idmap = {pi.pt_id};
+            vector<Point> pts = {pi.p};
+
+            local_idmap.insert({pi.hub_id, idmap});
+            local_pts.insert({pi.hub_id, pts});
+        }
+        else
+        {
+            auto& idmap = it->second;
+            auto& pts = local_pts.find(pi.hub_id)->second;
+
+            idmap.push_back(pi.pt_id);
+            pts.push_back(pi.p);
+        }
+    }
+
+    for (auto it = local_pts.begin(); it != local_pts.end(); ++it)
+    {
+        int64_t hub_id = it->first;
+        auto& pts = local_pts.find(hub_id)->second;
+
+        local_trees.insert({hub_id, CoverTree(pts, base, max_radius)});
+    }
+
+    timer.stop_timer();
+
+    if (!myrank && verbose)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (build_local_trees)\n", timer.get_max_time(), timer.get_avg_time(), niters);
+    }
 }
