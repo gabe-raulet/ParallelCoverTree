@@ -1,0 +1,22 @@
+Load balancer returns mapping of hub ids to processor ranks. This mapping is
+global and stored on all processors. The idea then is that when we do radii
+queries, the descent down the replicated portion of the tree should eventually
+reach vertices that are not stored in the replicated tree but only on particular
+processors. Recall that hub ids correspond one-to-one to the vertices whose
+associated point is the hub representative and whose descendants are all in the hub.
+Therefore, we can use the load balancer mapping (hub ids to processor ranks) to determine
+which processor stores the hub descendants.
+
+A nice way of doing this in parallel is to handle batches of query points. Then all processors
+can work in parallel to handle a partition of the batch and each partition will then determine
+which of the local subtrees to send batches of its query points.
+
+There is then an all-to-all collective that sends all points to their local subtree owning
+processors. Once each local processor has received its local batched queries, we lookup
+which local cover tree corresponds to the hub that the vertex should be coming from, and
+query against that cover tree. To get the correct results, we must store a mapping of
+of the local tree point indices to the global tree indices. This can be accomplished by
+storing a vector for each local cover tree that maps the local indices to the original
+global indices.
+
+
