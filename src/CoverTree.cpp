@@ -357,16 +357,13 @@ vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
     while (!stack.empty())
     {
         int64_t u = stack.back(); stack.pop_back();
-        vector<int64_t> mychildren = children[u];
 
-        for (int64_t v : mychildren)
-        {
-            if (query.distance(get_vertex_point(v)) <= radius + max_radius*vertex_ball_radius(v))
+        if (query.distance(get_vertex_point(u)) <= radius)
+            idset.insert(pt[u]);
+
+        for (int64_t v : children[u])
+            if (query.distance(get_vertex_point(v)) <= radius + max_radius * vertex_ball_radius(v))
                 stack.push_back(v);
-
-            if (query.distance(get_vertex_point(v)) <= radius)
-                idset.insert(pt[v]);
-        }
     }
 
     return vector<int64_t>(idset.begin(), idset.end());
