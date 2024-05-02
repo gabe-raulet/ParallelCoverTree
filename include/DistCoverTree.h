@@ -35,6 +35,7 @@ private:
     int64_t mysize, totsize, myoffset;
     MPI_Comm comm;
 
+    unordered_map<int64_t, Point> replicates;
     unordered_map<int64_t, int> hub_assignments;
     unordered_map<int64_t, vector<int64_t>> local_idmap;
     unordered_map<int64_t, CoverTree> local_trees;
@@ -60,6 +61,7 @@ private:
     unordered_map<int64_t, int64_t> get_my_hub_counts() const;
     unordered_map<int64_t, vector<int64_t>> get_my_hub_points() const;
     double compute_hub_to_rank_assignments(bool verbose = false);
+    void collect_replicate_points(bool verbose = false);
     void build_local_trees(bool verbose = false);
 
     void initialize_root_hub(bool verbose = false);

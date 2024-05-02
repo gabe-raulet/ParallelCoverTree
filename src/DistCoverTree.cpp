@@ -61,6 +61,7 @@ void DistCoverTree::build_tree(bool verbose)
     }
 
     assert(!hub_chains.empty());
+    collect_replicate_points(verbose);
     build_local_trees(verbose);
 }
 
@@ -747,6 +748,67 @@ struct PointInfo
         MPI_Type_free(&MPI_POINT);
     }
 };
+
+void DistCoverTree::collect_replicate_points(bool verbose)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    typedef struct { Point p; int64_t id; } PointPair;
+
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
+    MPI_Datatype MPI_POINT_PAIR, MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+
+    int blklens[2] = {1,1};
+    MPI_Aint disps[2] = {offsetof(PointPair, p), offsetof(PointPair, id)};
+    MPI_Datatype types[2] = {MPI_POINT, MPI_INT64_T};
+    MPI_Type_create_struct(2, blklens, disps, types, &MPI_POINT_PAIR);
+    MPI_Type_commit(&MPI_POINT_PAIR);
+
+    vector<PointPair> mypairs, pairs;
+    vector<int> recvcounts(nprocs), displs(nprocs);
+
+    unordered_set<int64_t> idset;
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t pt_id = pt[i];
+
+        if (myoffset <= pt_id && pt_id < myoffset + mysize && idset.find(pt_id) == idset.end())
+        {
+            idset.insert(pt_id);
+            mypairs.push_back({mypoints[pt_id], pt_id});
+        }
+    }
+
+    int sendcount = static_cast<int>(mypairs.size());
+    MPI_Allgather(&sendcount, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    displs.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+    pairs.resize(recvcounts.back() + displs.back());
+
+    MPI_Allgatherv(mypairs.data(), sendcount, MPI_POINT_PAIR, pairs.data(), recvcounts.data(), displs.data(), MPI_POINT_PAIR, comm);
+
+    MPI_Type_free(&MPI_POINT);
+    MPI_Type_free(&MPI_POINT_PAIR);
+
+    for (auto& ppair : pairs)
+    {
+        replicates.insert({ppair.id, ppair.p});
+    }
+
+    timer.stop_timer();
+
+    if (!myrank && verbose)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (collect_replicates) [num_replicates=%lu]\n", timer.get_max_time(), timer.get_avg_time(), replicates.size());
+    }
+}
 
 void DistCoverTree::build_local_trees(bool verbose)
 {
