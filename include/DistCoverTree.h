@@ -22,6 +22,8 @@ public:
 
     void print_timing_results() const;
 
+    vector<vector<int64_t>> build_epsilon_graph(double radius) const;
+
 private:
     double max_radius, base;
     vector<int64_t> pt, level;

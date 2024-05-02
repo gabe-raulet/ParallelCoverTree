@@ -354,7 +354,7 @@ vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
     unordered_set<int64_t> idset;
     vector<int64_t> stack = {0};
 
-    while (stack.size() != 0)
+    while (!stack.empty())
     {
         int64_t u = stack.back(); stack.pop_back();
         vector<int64_t> mychildren = children[u];

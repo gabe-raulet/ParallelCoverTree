@@ -765,22 +765,28 @@ void DistCoverTree::build_local_trees(bool verbose)
 
     int totsend = 0;
     vector<int> sendcounts(nprocs, 0);
-    vector<vector<PointInfo>> sendbufs(nprocs);
+    vector<vector<PointInfo>> sendbufs(nprocs); // outgoing buffer for each processor with (point,pt_id,hub_id) triples
 
+    // go through all local points
     for (int64_t i = 0; i < mysize; ++i)
     {
+        // lookup point's global hub id
         int64_t hub_id = my_hub_vtx_ids[i];
 
+        // check if hub is active
         if (hub_id >= 0)
         {
             auto it = hub_assignments.find(hub_id);
-            int rank = it->second;
+            int rank = it->second; // get destination processor rank of global hub according to computed hub assignments
+
+            // add triple to outgoing buffer
             sendbufs[rank].emplace_back(mypoints[i], i + myoffset, hub_id);
             sendcounts[rank]++;
             totsend++;
         }
     }
 
+    // flatten send buffer
     vector<PointInfo> sendbuf;
     sendbuf.reserve(totsize);
 
@@ -789,18 +795,23 @@ void DistCoverTree::build_local_trees(bool verbose)
         sendbuf.insert(sendbuf.end(), sendbufs[i].begin(), sendbufs[i].end());
     }
 
+    // send displacements
     vector<int> sdispls(nprocs);
     sdispls.front() = 0;
     partial_sum(sendcounts.begin(), sendcounts.end()-1, sdispls.begin()+1);
 
+    // share sendcounts so that each processor has correct recvcounts
     vector<int> recvcounts(nprocs), rdispls(nprocs);
     MPI_Alltoall(sendcounts.data(), 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
 
+    // receive displacements
     rdispls.front() = 0;
     partial_sum(recvcounts.begin(), recvcounts.end()-1, rdispls.begin()+1);
 
+    // receiving buffer
     vector<PointInfo> recvbuf(recvcounts.back() + rdispls.back());
 
+    // all-to-all communication of (point,pt_id,hub_id) triples
     MPI_Datatype MPI_POINT_INFO;
     PointInfo::create_mpi_dtype(&MPI_POINT_INFO);
 
@@ -846,4 +857,18 @@ void DistCoverTree::build_local_trees(bool verbose)
     {
         fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (build_local_trees)\n", timer.get_max_time(), timer.get_avg_time(), niters);
     }
+}
+
+vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<vector<int64_t>> my_edges(mysize);
+
+    for (int64_t i = 0; i < mysize; ++i)
+        my_edges[i].push_back(i+myoffset);
+
+    return my_edges;
 }

@@ -13,6 +13,7 @@ using namespace std;
 
 string return_current_time_and_date();
 string program_str(int argc, char *argv[]);
+void dist_write_graph_file(const vector<vector<int64_t>>& my_edges, const char *fname, MPI_Comm comm);
 
 int main(int argc, char *argv[])
 {
@@ -84,7 +85,38 @@ int main(int argc, char *argv[])
     timer.stop_timer();
     tree.print_timing_results();
 
+    double graph_time = timer.get_max_time();
+
     if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", timer.get_max_time(), timer.get_avg_time(), tree.num_vertices(), tree.num_levels(), base);
+
+    if (skip_graph)
+    {
+        MPI_Finalize();
+        return 0;
+    }
+
+    timer.start_timer();
+
+    vector<vector<int64_t>> my_edges = tree.build_epsilon_graph(radius);
+
+    timer.stop_timer();
+    graph_time += timer.get_max_time();
+
+    int64_t my_n_edges = 0, n_edges;
+    for_each(my_edges.begin(), my_edges.end(), [&](const auto& item) { my_n_edges += item.size(); });
+    MPI_Reduce(&my_n_edges, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_graph) [num_vertices=%lu,num_edges=%lld,avg_deg=%.4f,radius=%3f]\n", timer.get_max_time(), timer.get_avg_time(), points.size(), n_edges, (n_edges+0.0)/points.size(), radius);
+    if (!myrank) fprintf(stderr, "[tottime=%.4f] :: (dist_cover_tree_graph)\n", graph_time);
+
+    if (ofname)
+    {
+        timer.start_timer();
+        dist_write_graph_file(my_edges, ofname, MPI_COMM_WORLD);
+        timer.stop_timer();
+
+        if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_write_graph) [filename='%s']\n", timer.get_max_time(), timer.get_avg_time(), ofname);
+    }
 
     MPI_Finalize();
     return 0;
@@ -112,4 +144,54 @@ string return_current_time_and_date()
     stringstream ss;
     ss << put_time(localtime(&in_time_t), "%Y/%m/%d %X");
     return ss.str();
+}
+
+void dist_write_graph_file(const vector<vector<int64_t>>& my_edges, const char *fname, MPI_Comm comm)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    int64_t my_n_edges = 0;
+    int64_t my_n_verts = my_edges.size();
+    int64_t myoffset;
+
+    for_each(my_edges.cbegin(), my_edges.cend(), [&](const auto& item) { my_n_edges += item.size(); });
+
+    MPI_Exscan(&my_n_verts, &myoffset, 1, MPI_INT64_T, MPI_SUM, comm);
+    if (!myrank) myoffset = 0;
+
+    int64_t n_edges, n_verts;
+    MPI_Reduce(&my_n_verts, &n_verts, 1, MPI_INT64_T, MPI_SUM, 0, comm);
+    MPI_Reduce(&my_n_edges, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, comm);
+
+    stringstream ss;
+
+    if (!myrank)
+    {
+        ss << n_verts << " " << n_edges << "\n";
+    }
+
+    for (int64_t u = 0; u < my_n_verts; ++u)
+    {
+        vector<int64_t> dests = my_edges[u];
+        sort(dests.begin(), dests.end());
+
+        for (int64_t v : dests)
+        {
+            ss << (u+myoffset+1) << " " << (v+1) << "\n";
+        }
+    }
+
+    string sbuf = ss.str();
+    vector<char> buf(sbuf.begin(), sbuf.end());
+
+    MPI_Offset mysize = buf.size(), fileoffset;
+    MPI_Exscan(&mysize, &fileoffset, 1, MPI_OFFSET, MPI_SUM, comm);
+    if (!myrank) fileoffset = 0;
+
+    MPI_File fh;
+    MPI_File_open(comm, fname, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+    MPI_File_write_at_all(fh, fileoffset, buf.data(), static_cast<int>(buf.size()), MPI_CHAR, MPI_STATUS_IGNORE);
+    MPI_File_close(&fh);
 }
