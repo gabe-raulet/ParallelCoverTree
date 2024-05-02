@@ -837,7 +837,7 @@ void DistCoverTree::build_local_trees(bool verbose)
     {
         int64_t hub_id = it->first;
         auto& pts = local_pts.find(hub_id)->second;
-        local_trees.insert({hub_id, CoverTree(pts, base, max_radius, level[hub_id])});
+        local_trees.insert({hub_id, CoverTree(pts, base, max_radius, level[hub_id], pt[hub_id])});
     }
 
     timer.stop_timer();

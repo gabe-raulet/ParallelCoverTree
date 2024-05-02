@@ -17,13 +17,6 @@ public:
 
     void build_tree(bool verbose = false);
 
-    int64_t my_num_points() const { return mysize; }
-    int64_t tot_num_points() const { return totsize; }
-    int64_t my_points_offset() const { return myoffset; }
-
-    Point get_my_point(int64_t point_id) const;
-    Point get_my_vertex_point(int64_t vertex_id) const;
-
     int64_t num_vertices() const { return pt.size(); }
     int64_t num_levels() const {return *max_element(level.begin(), level.end()) + 1; }
 
