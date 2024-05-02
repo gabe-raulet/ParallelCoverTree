@@ -749,13 +749,20 @@ struct PointInfo
     }
 };
 
+struct PointPair
+{
+    Point p;
+    int64_t id;
+
+    PointPair() {}
+    PointPair(Point p, int64_t id) : p(p), id(id) {}
+};
+
 void DistCoverTree::collect_replicate_points(bool verbose)
 {
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
-
-    typedef struct { Point p; int64_t id; } PointPair;
 
     MPITimer timer(comm, 0);
     timer.start_timer();
@@ -774,14 +781,12 @@ void DistCoverTree::collect_replicate_points(bool verbose)
 
     unordered_set<int64_t> idset;
 
-    for (int64_t i = 0; i < mysize; ++i)
+    for (int64_t pt_id : pt)
     {
-        int64_t pt_id = pt[i];
-
         if (myoffset <= pt_id && pt_id < myoffset + mysize && idset.find(pt_id) == idset.end())
         {
             idset.insert(pt_id);
-            mypairs.push_back({mypoints[pt_id], pt_id});
+            mypairs.emplace_back(mypoints[pt_id-myoffset], pt_id);
         }
     }
 
@@ -929,8 +934,52 @@ vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
 
     vector<vector<int64_t>> my_edges(mysize);
 
+    unordered_set<int64_t> idset;
+    vector<int64_t> stack;
+
     for (int64_t i = 0; i < mysize; ++i)
-        my_edges[i].push_back(i+myoffset);
+    {
+        Point query = mypoints[i];
+        idset.clear();
+        stack.assign({0});
+
+        while (!stack.empty())
+        {
+            int64_t u = stack.back(); stack.pop_back();
+            auto it = local_trees.find(u);
+
+            if (it == local_trees.end())
+            {
+                auto rit = replicates.find(pt[u]);
+                assert(rit != replicates.end());
+                Point comp = rit->second;
+
+                if (query.distance(comp) <= radius)
+                    idset.insert(pt[u]);
+
+                for (int64_t v : children[u])
+                {
+                    rit = replicates.find(pt[v]);
+                    assert(rit != replicates.end());
+                    comp = rit->second;
+
+                    if (query.distance(comp) <= radius + max_radius * vertex_ball_radius(v))
+                        stack.push_back(v);
+                }
+            }
+            else
+            {
+                const CoverTree& t = it->second;
+                const vector<int64_t>& idmap = local_idmap.find(u)->second;
+
+                vector<int64_t> ids = t.radii_query(query, radius);
+                for_each(ids.begin(), ids.end(), [&](int64_t& id) { id = idmap[id]; });
+                idset.insert(ids.begin(), ids.end());
+            }
+        }
+
+        my_edges[i].assign(idset.begin(), idset.end());
+    }
 
     return my_edges;
 }
