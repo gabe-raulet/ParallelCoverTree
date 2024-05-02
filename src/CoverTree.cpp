@@ -12,13 +12,14 @@
 #include <cassert>
 #include <stdio.h>
 
-CoverTree::CoverTree(const vector<Point>& points, double base, double max_radius)
-    : max_radius(-1),
+CoverTree::CoverTree(const vector<Point>& points, double base, double max_radius, int64_t root_level)
+    : max_radius(max_radius),
       base(base),
       points(points),
       nlevels(0),
       niters(0),
-      num_active_pts(points.size()) {}
+      num_active_pts(points.size()),
+      root_level(root_level) {}
 
 int64_t CoverTree::num_points() const { return points.size(); }
 int64_t CoverTree::num_vertices() const { return pt.size(); }
@@ -40,7 +41,7 @@ int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
         vertex_level = level[parent_id] + 1;
         children[parent_id].push_back(vertex_id);
     }
-    else vertex_level = 0;
+    else vertex_level = root_level;
 
     nlevels = max(vertex_level+1, nlevels);
 

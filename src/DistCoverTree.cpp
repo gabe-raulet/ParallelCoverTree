@@ -703,9 +703,6 @@ double DistCoverTree::compute_hub_to_rank_assignments(bool verbose)
     vector<int64_t> workloads(nprocs, 0);
     unordered_map<int64_t, int64_t> hub_counts = get_hub_counts();
 
-    transform(hub_counts.begin(), hub_counts.end(), inserter(hub_assignments, hub_assignments.end()),
-            [](auto pair) { return make_pair(pair.first, 0); });
-
     for (auto it = hub_counts.begin(); it != hub_counts.end(); ++it)
     {
         int smallest_rank = distance(workloads.begin(), min_element(workloads.begin(), workloads.end()));
@@ -766,24 +763,20 @@ void DistCoverTree::build_local_trees(bool verbose)
     MPITimer timer(comm, 0);
     timer.start_timer();
 
-    /*
-     * Use @hub_assignments to fill outgoing buffers of global point ids and points.
-     */
-
     int totsend = 0;
     vector<int> sendcounts(nprocs, 0);
-    vector<vector<PointInfo>> sendbufs;
+    vector<vector<PointInfo>> sendbufs(nprocs);
 
     for (int64_t i = 0; i < mysize; ++i)
     {
         int64_t hub_id = my_hub_vtx_ids[i];
-        auto it = hub_assignments.find(hub_id);
 
-        if (it != hub_assignments.end())
+        if (hub_id >= 0)
         {
-            int destrank = it->second;
-            sendbufs[destrank].emplace_back(mypoints[i], i+myoffset, hub_id);
-            sendcounts[destrank]++;
+            auto it = hub_assignments.find(hub_id);
+            int rank = it->second;
+            sendbufs[rank].emplace_back(mypoints[i], i + myoffset, hub_id);
+            sendcounts[rank]++;
             totsend++;
         }
     }
@@ -844,8 +837,7 @@ void DistCoverTree::build_local_trees(bool verbose)
     {
         int64_t hub_id = it->first;
         auto& pts = local_pts.find(hub_id)->second;
-
-        local_trees.insert({hub_id, CoverTree(pts, base, max_radius)});
+        local_trees.insert({hub_id, CoverTree(pts, base, max_radius, level[hub_id])});
     }
 
     timer.stop_timer();
