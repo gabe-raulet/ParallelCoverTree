@@ -12,6 +12,8 @@
 #include <cassert>
 #include <stdio.h>
 
+CoverTree::CoverTree(const vector<Point>& points) : CoverTree(points, 2.) {}
+CoverTree::CoverTree(const vector<Point>& points, double base) : CoverTree(points, base, -1., 0, 0) {}
 CoverTree::CoverTree(const vector<Point>& points, double base, double max_radius, int64_t root_level, int64_t root_pt_id)
     : max_radius(max_radius),
       base(base),
@@ -64,6 +66,7 @@ void CoverTree::initialize_root_hub(bool verbose)
     hub_pt_ids.resize(num_points());
 
     int64_t root_id = add_vertex(root_pt_id, -1);
+    assert(root_id == 0);
 
     for (int64_t i = 0; i < num_points(); ++i)
     {
@@ -81,7 +84,7 @@ void CoverTree::initialize_root_hub(bool verbose)
         max_radius = dists[argmax];
     }
 
-    hub_chains.insert({root_id, {pt[root_id]}});
+    hub_chains.insert({root_id, {root_pt_id}});
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();

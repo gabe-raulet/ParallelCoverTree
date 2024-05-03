@@ -44,8 +44,27 @@ void DistCoverTree::set_times_to_zero()
 
 void DistCoverTree::build_tree(bool verbose)
 {
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
     set_times_to_zero();
     initialize_root_hub(verbose);
+
+    double load_imbalance = static_cast<double>(nprocs);
+
+    while (!hub_chains.empty() && load_imbalance > 1.25)
+    {
+        niters++;
+        compute_farthest_hub_pts(verbose);
+        update_hub_chains(verbose);
+        process_leaf_chains(verbose);
+        process_split_chains(verbose);
+        update_dists_and_pointers(verbose);
+        load_imbalance = compute_hub_to_rank_assignments(verbose);
+    }
+
+    assert(!hub_chains.empty());
 
     while (!hub_chains.empty())
     {
@@ -56,21 +75,6 @@ void DistCoverTree::build_tree(bool verbose)
         process_split_chains(verbose);
         update_dists_and_pointers(verbose);
     }
-
-    //double load_imbalance = numeric_limits<double>::max();
-
-    //while (!hub_chains.empty() && load_imbalance > 1.25)
-    //{
-        //niters++;
-        //compute_farthest_hub_pts(verbose);
-        //update_hub_chains(verbose);
-        //process_leaf_chains(verbose);
-        //process_split_chains(verbose);
-        //update_dists_and_pointers(verbose);
-        //load_imbalance = compute_hub_to_rank_assignments(verbose);
-    //}
-
-    //assert(!hub_chains.empty());
     //collect_replicate_points(verbose);
     //build_local_trees(verbose);
 }
