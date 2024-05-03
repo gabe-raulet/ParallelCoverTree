@@ -47,9 +47,7 @@ void DistCoverTree::build_tree(bool verbose)
     set_times_to_zero();
     initialize_root_hub(verbose);
 
-    double load_imbalance = numeric_limits<double>::max();
-
-    while (!hub_chains.empty() && load_imbalance > 1.25)
+    while (!hub_chains.empty())
     {
         niters++;
         compute_farthest_hub_pts(verbose);
@@ -57,12 +55,24 @@ void DistCoverTree::build_tree(bool verbose)
         process_leaf_chains(verbose);
         process_split_chains(verbose);
         update_dists_and_pointers(verbose);
-        load_imbalance = compute_hub_to_rank_assignments(verbose);
     }
 
-    assert(!hub_chains.empty());
-    collect_replicate_points(verbose);
-    build_local_trees(verbose);
+    //double load_imbalance = numeric_limits<double>::max();
+
+    //while (!hub_chains.empty() && load_imbalance > 1.25)
+    //{
+        //niters++;
+        //compute_farthest_hub_pts(verbose);
+        //update_hub_chains(verbose);
+        //process_leaf_chains(verbose);
+        //process_split_chains(verbose);
+        //update_dists_and_pointers(verbose);
+        //load_imbalance = compute_hub_to_rank_assignments(verbose);
+    //}
+
+    //assert(!hub_chains.empty());
+    //collect_replicate_points(verbose);
+    //build_local_trees(verbose);
 }
 
 void DistCoverTree::print_timing_results() const
@@ -932,10 +942,25 @@ vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
 
-    vector<vector<int64_t>> my_edges(mysize);
+    vector<int> recvcounts(nprocs);
+    recvcounts[myrank] = mysize;
+    MPI_Allgather(MPI_IN_PLACE, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    vector<int> displs(nprocs);
+    displs.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+    assert(recvcounts.back() + displs.back() == totsize);
+
+    vector<Point> allpoints(totsize);
+
+    MPI_Datatype MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+    MPI_Allgatherv(mypoints.data(), recvcounts[myrank], MPI_POINT, allpoints.data(), recvcounts.data(), displs.data(), MPI_POINT, comm);
+    MPI_Type_free(&MPI_POINT);
 
     unordered_set<int64_t> idset;
     vector<int64_t> stack;
+    vector<vector<int64_t>> my_edges(mysize);
 
     for (int64_t i = 0; i < mysize; ++i)
     {
@@ -946,40 +971,78 @@ vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
         while (!stack.empty())
         {
             int64_t u = stack.back(); stack.pop_back();
-            auto it = local_trees.find(u);
 
-            if (it == local_trees.end())
-            {
-                auto rit = replicates.find(pt[u]);
-                assert(rit != replicates.end());
-                Point comp = rit->second;
+            if (query.distance(allpoints[pt[u]]) <= radius)
+                idset.insert(pt[u]);
 
-                if (query.distance(comp) <= radius)
-                    idset.insert(pt[u]);
+            double compare_radius = radius + max_radius * (vertex_ball_radius(u) / base);
 
-                for (int64_t v : children[u])
-                {
-                    rit = replicates.find(pt[v]);
-                    assert(rit != replicates.end());
-                    comp = rit->second;
-
-                    if (query.distance(comp) <= radius + max_radius * vertex_ball_radius(v))
-                        stack.push_back(v);
-                }
-            }
-            else
-            {
-                const CoverTree& t = it->second;
-                const vector<int64_t>& idmap = local_idmap.find(u)->second;
-
-                vector<int64_t> ids = t.radii_query(query, radius);
-                for_each(ids.begin(), ids.end(), [&](int64_t& id) { id = idmap[id]; });
-                idset.insert(ids.begin(), ids.end());
-            }
+            for (int64_t v : children[u])
+                if (query.distance(allpoints[pt[v]]) <= compare_radius)
+                    stack.push_back(v);
         }
 
+        my_edges[i].reserve(idset.size());
         my_edges[i].assign(idset.begin(), idset.end());
     }
 
     return my_edges;
 }
+
+//vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
+//{
+    //int myrank, nprocs;
+    //MPI_Comm_rank(comm, &myrank);
+    //MPI_Comm_size(comm, &nprocs);
+
+    //vector<vector<int64_t>> my_edges(mysize);
+
+    //unordered_set<int64_t> idset;
+    //vector<int64_t> stack;
+
+    //for (int64_t i = 0; i < mysize; ++i)
+    //{
+        //Point query = mypoints[i];
+        //idset.clear();
+        //stack.assign({0});
+
+        //while (!stack.empty())
+        //{
+            //int64_t u = stack.back(); stack.pop_back();
+            //auto it = local_trees.find(u);
+
+            //if (it == local_trees.end())
+            //{
+                //auto rit = replicates.find(pt[u]);
+                //assert(rit != replicates.end());
+                //Point comp = rit->second;
+
+                //if (query.distance(comp) <= radius)
+                    //idset.insert(pt[u]);
+
+                //for (int64_t v : children[u])
+                //{
+                    //rit = replicates.find(pt[v]);
+                    //assert(rit != replicates.end());
+                    //comp = rit->second;
+
+                    //if (query.distance(comp) <= radius + max_radius * vertex_ball_radius(v))
+                        //stack.push_back(v);
+                //}
+            //}
+            //else
+            //{
+                //const CoverTree& t = it->second;
+                //const vector<int64_t>& idmap = local_idmap.find(u)->second;
+
+                //vector<int64_t> ids = t.radii_query(query, radius);
+                //for_each(ids.begin(), ids.end(), [&](int64_t& id) { id = idmap[id]; });
+                //idset.insert(ids.begin(), ids.end());
+            //}
+        //}
+
+        //my_edges[i].assign(idset.begin(), idset.end());
+    //}
+
+    //return my_edges;
+//}

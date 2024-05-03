@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     for_each(my_edges.begin(), my_edges.end(), [&](const auto& item) { my_n_edges += item.size(); });
     MPI_Reduce(&my_n_edges, &n_edges, 1, MPI_INT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_graph) [num_vertices=%lu,num_edges=%lld,avg_deg=%.4f,radius=%3f]\n", timer.get_max_time(), timer.get_avg_time(), points.size(), n_edges, (n_edges+0.0)/points.size(), radius);
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_graph) [num_vertices=%lu,num_edges=%lld,avg_deg=%.4f,radius=%.03f]\n", timer.get_max_time(), timer.get_avg_time(), points.size(), n_edges, (n_edges+0.0)/points.size(), radius);
     if (!myrank) fprintf(stderr, "[tottime=%.4f] :: (dist_cover_tree_graph)\n", graph_time);
 
     if (ofname)
