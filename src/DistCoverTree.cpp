@@ -768,3 +768,26 @@ unordered_map<int64_t, size_t> DistCoverTree::get_hub_idmap() const
 
     return hub_idmap;
 }
+
+unordered_map<int64_t, vector<int64_t>> DistCoverTree::get_my_hub_point_ids() const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    unordered_map<int64_t, vector<int64_t>> my_hub_point_ids;
+    transform(hub_chains.begin(), hub_chains.end(), inserter(my_hub_point_ids, my_hub_point_ids.end()),
+              [](auto pair) { return make_pair(pair.first, vector<int64_t>()); });
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t hub_id = my_hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            my_hub_point_ids.find(hub_id)->second.push_back(i + myoffset);
+        }
+    }
+
+    return my_hub_point_ids;
+}

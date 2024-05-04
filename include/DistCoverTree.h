@@ -35,8 +35,6 @@ private:
     int64_t mysize, totsize, myoffset;
     MPI_Comm comm;
 
-    unordered_map<int64_t, int> hub_assignments;
-
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double vertex_ball_radius(int64_t vertex_id) const;
 
@@ -53,6 +51,7 @@ private:
     unordered_map<int64_t, pair<int64_t, double>> farthest_hub_pts;
     unordered_set<int64_t> leaf_chains;
     vector<int64_t> split_chains;
+    unordered_map<int64_t, int> hub_assignments;
 
     unordered_map<int64_t, int64_t> get_hub_counts() const;
     double compute_hub_to_rank_assignments(bool verbose = false);
@@ -76,6 +75,7 @@ private:
     void set_times_to_zero();
 
     unordered_map<int64_t, size_t> get_hub_idmap() const;
+    unordered_map<int64_t, vector<int64_t>> get_my_hub_point_ids() const;
 };
 
 #endif
