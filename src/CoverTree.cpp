@@ -356,6 +356,7 @@ vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
 {
     unordered_set<int64_t> idset;
     vector<int64_t> stack = {0};
+    assert(pt[stack.front()] == root_pt_id);
 
     while (!stack.empty())
     {
