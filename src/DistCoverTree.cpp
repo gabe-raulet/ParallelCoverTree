@@ -756,3 +756,15 @@ vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
 
     return my_edges;
 }
+
+unordered_map<int64_t, size_t> DistCoverTree::get_hub_idmap() const
+{
+    unordered_map<int64_t, size_t> hub_idmap;
+
+    for (auto it = hub_chains.begin(); it != hub_chains.end(); ++it)
+    {
+        hub_idmap.insert({it->first, hub_idmap.size()});
+    }
+
+    return hub_idmap;
+}

@@ -55,9 +55,7 @@ private:
     vector<int64_t> split_chains;
 
     unordered_map<int64_t, int64_t> get_hub_counts() const;
-    unordered_map<int64_t, int64_t> get_my_hub_counts() const;
     double compute_hub_to_rank_assignments(bool verbose = false);
-    void collect_replicate_points(bool verbose = false);
     void build_local_trees(bool verbose = false);
 
     void initialize_root_hub(bool verbose = false);
@@ -76,6 +74,8 @@ private:
     double update_dists_and_pointers_time;
 
     void set_times_to_zero();
+
+    unordered_map<int64_t, size_t> get_hub_idmap() const;
 };
 
 #endif
