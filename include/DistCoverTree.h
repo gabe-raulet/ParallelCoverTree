@@ -67,6 +67,7 @@ private:
     void add_batched_vertices();
 
     unordered_map<int64_t, int64_t> get_hub_counts() const;
+    pair<double, unordered_map<int64_t, int>> compute_hub_assignments(bool verbose) const;
 };
 
 #endif

@@ -91,6 +91,9 @@ void DistCoverTree::build_tree(bool verbose)
     set_times_to_zero();
     initialize_root_hub(verbose);
 
+    double load_imbalance = numeric_limits<double>::max();
+    unordered_map<int64_t, int> hub_assignments;
+
     while (!hub_chains.empty())
     {
         niters++;
@@ -99,6 +102,7 @@ void DistCoverTree::build_tree(bool verbose)
         process_leaf_chains(verbose);
         process_split_chains(verbose);
         update_dists_and_pointers(verbose);
+        tie(load_imbalance, hub_assignments) = compute_hub_assignments(verbose);
     }
 }
 
@@ -678,4 +682,38 @@ vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
     }
 
     return my_edges;
+}
+
+pair<double, unordered_map<int64_t, int>> DistCoverTree::compute_hub_assignments(bool verbose) const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
+    unordered_map<int64_t, int> hub_assignments;
+    vector<int64_t> workloads(nprocs, 0);
+    unordered_map<int64_t, int64_t> hub_counts = get_hub_counts();
+
+    for (auto it = hub_counts.begin(); it != hub_counts.end(); ++it)
+    {
+        int smallest_rank = distance(workloads.begin(), min_element(workloads.begin(), workloads.end()));
+        hub_assignments.insert({it->first, smallest_rank});
+        workloads[smallest_rank] += it->second;
+    }
+
+    int64_t maxcount = *max_element(workloads.begin(), workloads.end());
+    int64_t totcount = accumulate(workloads.begin(), workloads.end(), 0, plus<int64_t>());
+    double load_imbalance = ((nprocs + 0.0) * maxcount) / (totcount + 0.0);
+
+    timer.stop_timer();
+
+    if (!myrank && verbose)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f,itr=%lld] :: (compute_hub_assignments) :: [load_imbalance=%.4f]\n", timer.get_max_time(), timer.get_avg_time(), niters, load_imbalance);
+    }
+
+    return make_pair(load_imbalance, hub_assignments);
 }
