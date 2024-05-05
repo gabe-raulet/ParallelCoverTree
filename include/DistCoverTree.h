@@ -44,8 +44,6 @@ private:
     int64_t batch_new_vertex(int64_t point_id, int64_t parent_id);
     void add_batched_vertices();
 
-    unordered_map<int64_t, Point> collect_points(const vector<int64_t>& point_ids) const;
-
     vector<double> my_dists;
     vector<int64_t> my_hub_vtx_ids, my_hub_pt_ids;
     unordered_map<int64_t, vector<int64_t>> hub_chains;

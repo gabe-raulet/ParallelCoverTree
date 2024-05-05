@@ -588,58 +588,6 @@ void DistCoverTree::process_split_chains(bool verbose)
     }
 }
 
-unordered_map<int64_t, Point> DistCoverTree::collect_points(const vector<int64_t>& point_ids) const
-{
-    /*
-     * Allgather points based on list of global point ids.
-     * The @point_ids vector itself should only contain points
-     * available locally.
-     */
-
-    int myrank, nprocs;
-    MPI_Comm_rank(comm, &myrank);
-    MPI_Comm_size(comm, &nprocs);
-
-    int sendcount;
-    vector<int> recvcounts(nprocs), displs(nprocs);
-    vector<Point> sendbuf, recvbuf;
-    vector<int64_t> myids, ids;
-
-    for (int64_t id : point_ids)
-        if (myoffset <= id && id < myoffset + mysize)
-        {
-            sendbuf.push_back(mypoints[id-myoffset]);
-            myids.push_back(id);
-        }
-
-    sendcount = static_cast<int>(sendbuf.size());
-
-    MPI_Allgather(&sendcount, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
-
-    displs.front() = 0;
-    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
-
-    int totrecv = recvcounts.back() + displs.back();
-    recvbuf.resize(totrecv);
-    ids.resize(totrecv);
-
-    MPI_Datatype MPI_POINT;
-    Point::create_mpi_dtype(&MPI_POINT);
-
-    MPI_Allgatherv(sendbuf.data(), sendcount, MPI_POINT, recvbuf.data(), recvcounts.data(), displs.data(), MPI_POINT, comm);
-    MPI_Allgatherv(myids.data(), sendcount, MPI_INT64_T, ids.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
-
-    MPI_Type_free(&MPI_POINT);
-
-    unordered_map<int64_t, Point> collected_points;
-    collected_points.reserve(totrecv);
-
-    for (int64_t i = 0; i < static_cast<int64_t>(totrecv); ++i)
-        collected_points.insert({ids[i], recvbuf[i]});
-
-    return collected_points;
-}
-
 void DistCoverTree::update_dists_and_pointers(bool verbose)
 {
     /*
@@ -647,10 +595,15 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
      * all the points and update their hub pointers and distances.
      */
 
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
     MPITimer timer(comm, 0);
     timer.start_timer();
 
     vector<int64_t> my_last_chain_pt_ids;
+    vector<Point> my_last_chain_pts;
 
     for (int64_t i = 0; i < mysize; ++i)
     {
@@ -659,11 +612,39 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
         if (hub_id >= 0)
         {
             int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
-            my_last_chain_pt_ids.push_back(last_chain_pt_id);
+
+            if (myoffset <= last_chain_pt_id && last_chain_pt_id < myoffset + mysize)
+            {
+                my_last_chain_pt_ids.push_back(last_chain_pt_id);
+                my_last_chain_pts.push_back(mypoints[last_chain_pt_id - myoffset]);
+            }
         }
     }
 
-    unordered_map<int64_t, Point> last_chain_pt_ids = collect_points(my_last_chain_pt_ids);
+    vector<int> recvcounts(nprocs), displs(nprocs);
+    recvcounts[myrank] = my_last_chain_pts.size();
+    MPI_Allgather(MPI_IN_PLACE, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    displs.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+
+    vector<Point> last_chain_pts(recvcounts.back() + displs.back());
+    vector<int64_t> last_chain_pt_ids(recvcounts.back() + displs.back());
+
+    MPI_Datatype MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+
+    MPI_Allgatherv(my_last_chain_pts.data(), recvcounts[myrank], MPI_POINT, last_chain_pts.data(), recvcounts.data(), displs.data(), MPI_POINT, comm);
+    MPI_Allgatherv(my_last_chain_pt_ids.data(), recvcounts[myrank], MPI_INT64_T, last_chain_pt_ids.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
+
+    MPI_Type_free(&MPI_POINT);
+
+    unordered_map<int64_t, Point> last_chain_pt_map;
+
+    for (int64_t i = 0; i < last_chain_pts.size(); ++i)
+    {
+        last_chain_pt_map.insert({last_chain_pt_ids[i], last_chain_pts[i]});
+    }
 
     for (int64_t i = 0; i < mysize; ++i)
     {
@@ -673,7 +654,7 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
         {
             int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
             double lastdist = my_dists[i];
-            double curdist = mypoints[i].distance(last_chain_pt_ids.find(last_chain_pt_id)->second);
+            double curdist = mypoints[i].distance(last_chain_pt_map.find(last_chain_pt_id)->second);
 
             if (curdist <= lastdist)
             {
@@ -684,9 +665,6 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
     }
 
     timer.stop_timer();
-
-    int myrank;
-    MPI_Comm_rank(comm, &myrank);
 
     if (!myrank)
     {
