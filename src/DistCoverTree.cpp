@@ -1023,7 +1023,7 @@ void DistCoverTree::build_local_trees(bool verbose)
     {
         int64_t hub_id = it->first;
         const vector<Point>& pts = it->second;
-        local_trees.insert({hub_id, CoverTree(pts, base, max_radius, level[hub_id], local_root_map.find(hub_id)->second).build_tree(true)});
+        //local_trees.insert({hub_id, CoverTree(pts, base, max_radius, level[hub_id], local_root_map.find(hub_id)->second).build_tree(true)});
     }
 
     timer.stop_timer();

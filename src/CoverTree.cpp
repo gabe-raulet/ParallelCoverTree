@@ -12,17 +12,13 @@
 #include <cassert>
 #include <stdio.h>
 
-CoverTree::CoverTree(const vector<Point>& points) : CoverTree(points, 2.) {}
-CoverTree::CoverTree(const vector<Point>& points, double base) : CoverTree(points, base, -1., 0, 0) {}
-CoverTree::CoverTree(const vector<Point>& points, double base, double max_radius, int64_t root_level, int64_t root_pt_id)
-    : max_radius(max_radius),
+CoverTree::CoverTree(const vector<Point>& points, double base)
+    : max_radius(-1),
       base(base),
       points(points),
       nlevels(0),
       niters(0),
-      num_active_pts(points.size()),
-      root_level(root_level),
-      root_pt_id(root_pt_id) {}
+      num_active_pts(points.size()) {}
 
 int64_t CoverTree::num_points() const { return points.size(); }
 int64_t CoverTree::num_vertices() const { return pt.size(); }
@@ -44,7 +40,7 @@ int64_t CoverTree::add_vertex(int64_t point_id, int64_t parent_id)
         vertex_level = level[parent_id] + 1;
         children[parent_id].push_back(vertex_id);
     }
-    else vertex_level = root_level;
+    else vertex_level = 0;
 
     nlevels = max(vertex_level+1, nlevels);
 
@@ -65,14 +61,14 @@ void CoverTree::initialize_root_hub(bool verbose)
     hub_vtx_ids.resize(num_points());
     hub_pt_ids.resize(num_points());
 
-    int64_t root_id = add_vertex(root_pt_id, -1);
+    int64_t root_id = add_vertex(0, -1);
     assert(root_id == 0);
 
     for (int64_t i = 0; i < num_points(); ++i)
     {
         dists[i] = get_vertex_point(root_id).distance(get_point(i));
         hub_vtx_ids[i] = root_id;
-        hub_pt_ids[i] = root_pt_id; // pt[root_id]
+        hub_pt_ids[i] = pt[root_id];
     }
 
     int64_t argmax = -1;
@@ -84,7 +80,7 @@ void CoverTree::initialize_root_hub(bool verbose)
         max_radius = dists[argmax];
     }
 
-    hub_chains.insert({root_id, {root_pt_id}});
+    hub_chains.insert({root_id, {pt[root_id]}});
 
     auto t2 = mytimer::clock::now();
     double t = mytimer::duration(t2-t1).count();
@@ -359,7 +355,6 @@ vector<int64_t> CoverTree::radii_query(const Point& query, double radius) const
 {
     unordered_set<int64_t> idset;
     vector<int64_t> stack = {0};
-    assert(pt[stack.front()] == root_pt_id);
 
     while (!stack.empty())
     {
