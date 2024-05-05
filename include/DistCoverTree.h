@@ -32,17 +32,11 @@ private:
     int64_t niters, nlevels;
 
     vector<Point> mypoints;
-    unordered_map<int64_t, Point> repoints;
     int64_t mysize, totsize, myoffset;
     MPI_Comm comm;
 
     int64_t add_vertex(int64_t point_id, int64_t parent_id);
     double vertex_ball_radius(int64_t vertex_id) const;
-
-    vector<int64_t> my_new_vertex_pt_ids, my_new_vertex_hub_ids;
-
-    int64_t batch_new_vertex(int64_t point_id, int64_t parent_id);
-    void add_batched_vertices();
 
     vector<double> my_dists;
     vector<int64_t> my_hub_vtx_ids, my_hub_pt_ids;
@@ -50,15 +44,6 @@ private:
     unordered_map<int64_t, pair<int64_t, double>> farthest_hub_pts;
     unordered_set<int64_t> leaf_chains;
     vector<int64_t> split_chains;
-    unordered_map<int64_t, int> hub_assignments;
-
-    unordered_map<int64_t, vector<int64_t>> local_idmap;
-    unordered_map<int64_t, CoverTree> local_trees;
-
-    unordered_map<int64_t, int64_t> get_hub_counts() const;
-    double compute_hub_to_rank_assignments(bool verbose = false);
-    void collect_replicate_points(bool verbose = false);
-    void build_local_trees(bool verbose = false);
 
     void initialize_root_hub(bool verbose = false);
     void compute_farthest_hub_pts(bool verbose = false);
@@ -77,8 +62,9 @@ private:
 
     void set_times_to_zero();
 
-    unordered_map<int64_t, size_t> get_hub_idmap() const;
-    unordered_map<int64_t, vector<int64_t>> get_my_hub_point_ids() const;
+    vector<int64_t> my_new_vertex_pt_ids, my_new_vertex_hub_ids;
+    int64_t batch_new_vertex(int64_t point_id, int64_t parent_id);
+    void add_batched_vertices();
 };
 
 #endif
