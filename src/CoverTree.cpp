@@ -326,8 +326,9 @@ void CoverTree::set_times_to_zero()
     update_dists_and_pointers_time = 0;
 }
 
-void CoverTree::build_tree(bool verbose)
+CoverTree& CoverTree::build_tree(bool verbose)
 {
+    assert(points.size() > 0);
     set_times_to_zero();
     initialize_root_hub(verbose);
 
@@ -340,6 +341,8 @@ void CoverTree::build_tree(bool verbose)
         process_split_chains(verbose);
         update_dists_and_pointers(verbose);
     }
+
+    return *this;
 }
 
 void CoverTree::print_timing_results() const

@@ -28,6 +28,8 @@ public:
 
     double distance(const Point& rhs) const;
     friend double distance(const Point& p, const Point& q);
+    friend bool operator==(const Point& lhs, const Point& rhs) { return lhs.data[0] == rhs.data[0] && lhs.data[1] == rhs.data[1]; }
+    friend bool operator!=(const Point& lhs, const Point& rhs) { return !(lhs == rhs); }
 
     void fill_dest(float *dest) const { dest[0] = data[0], dest[1] = data[1]; }
 

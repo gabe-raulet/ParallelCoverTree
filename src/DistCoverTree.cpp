@@ -133,16 +133,6 @@ void DistCoverTree::build_tree(bool verbose)
 
     collect_replicate_points(verbose);
     build_local_trees(verbose);
-
-    //while (!hub_chains.empty())
-    //{
-        //niters++;
-        //compute_farthest_hub_pts(verbose);
-        //update_hub_chains(verbose);
-        //process_leaf_chains(verbose);
-        //process_split_chains(verbose);
-        //update_dists_and_pointers(verbose);
-    //}
 }
 
 void DistCoverTree::print_timing_results() const
@@ -1003,6 +993,7 @@ void DistCoverTree::build_local_trees(bool verbose)
 
     assert(local_idmap.empty());
     unordered_map<int64_t, vector<Point>> local_points;
+    unordered_map<int64_t, int64_t> local_root_map;
 
     for (auto it = recvbuf.begin(); it != recvbuf.end(); ++it)
     {
@@ -1011,18 +1002,34 @@ void DistCoverTree::build_local_trees(bool verbose)
         int64_t hub_id = it->hub_id;
         auto hit = local_idmap.find(hub_id);
 
+        if (pt[hub_id] == pt_id)
+        {
+            assert(p == repoints.find(hub_id)->second);
+        }
+
         if (hit == local_idmap.end())
         {
             vector<int64_t> ids = {pt_id};
             vector<Point> pts = {p};
 
+            if (pt[hub_id] == pt_id)
+            {
+                local_root_map.insert({hub_id, 0});
+            }
+
             local_idmap.insert({hub_id, ids});
             local_points.insert({hub_id, pts});
+
         }
         else
         {
             vector<int64_t>& ids = hit->second;
             vector<Point>& pts = local_points.find(hub_id)->second;
+
+            if (pt[hub_id] == pt_id)
+            {
+                local_root_map.insert({hub_id, static_cast<int64_t>(ids.size())});
+            }
 
             ids.push_back(pt_id);
             pts.push_back(p);
@@ -1033,7 +1040,7 @@ void DistCoverTree::build_local_trees(bool verbose)
     {
         int64_t hub_id = it->first;
         const vector<Point>& pts = it->second;
-        local_trees.insert({hub_id, CoverTree(pts, base, max_radius, level[hub_id], pt[hub_id])});
+        local_trees.insert({hub_id, CoverTree(pts, base, max_radius, level[hub_id], local_root_map.find(hub_id)->second).build_tree(true)});
     }
 
     timer.stop_timer();
