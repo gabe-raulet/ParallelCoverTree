@@ -605,19 +605,14 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
     vector<int64_t> my_last_chain_pt_ids;
     vector<Point> my_last_chain_pts;
 
-    for (int64_t i = 0; i < mysize; ++i)
+    for (auto it = hub_chains.begin(); it != hub_chains.end(); ++it)
     {
-        int64_t hub_id = my_hub_vtx_ids[i];
+        int64_t last_chain_pt_id = it->second.back();
 
-        if (hub_id >= 0)
+        if (myoffset <= last_chain_pt_id && last_chain_pt_id < myoffset + mysize)
         {
-            int64_t last_chain_pt_id = hub_chains.find(hub_id)->second.back();
-
-            if (myoffset <= last_chain_pt_id && last_chain_pt_id < myoffset + mysize)
-            {
-                my_last_chain_pt_ids.push_back(last_chain_pt_id);
-                my_last_chain_pts.push_back(mypoints[last_chain_pt_id - myoffset]);
-            }
+            my_last_chain_pt_ids.push_back(last_chain_pt_id);
+            my_last_chain_pts.push_back(mypoints[last_chain_pt_id - myoffset]);
         }
     }
 
