@@ -65,6 +65,8 @@ private:
     vector<int64_t> my_new_vertex_pt_ids, my_new_vertex_hub_ids;
     int64_t batch_new_vertex(int64_t point_id, int64_t parent_id);
     void add_batched_vertices();
+
+    unordered_map<int64_t, int64_t> get_hub_counts() const;
 };
 
 #endif

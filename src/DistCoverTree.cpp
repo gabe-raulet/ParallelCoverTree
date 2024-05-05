@@ -42,6 +42,46 @@ void DistCoverTree::set_times_to_zero()
     update_dists_and_pointers_time = 0;
 }
 
+unordered_map<int64_t, int64_t> DistCoverTree::get_hub_counts() const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    unordered_map<int64_t, size_t> hub_idmap;
+
+    for (auto it = hub_chains.begin(); it != hub_chains.end(); ++it)
+    {
+        hub_idmap.insert({it->first, hub_idmap.size()});
+    }
+
+    vector<int64_t> flat_hub_counts(hub_idmap.size(), 0);
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t hub_id = my_hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            size_t loc = hub_idmap.find(hub_id)->second;
+            flat_hub_counts[loc]++;
+        }
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, flat_hub_counts.data(), static_cast<int>(flat_hub_counts.size()), MPI_INT64_T, MPI_SUM, comm);
+
+    unordered_map<int64_t, int64_t> hub_counts;
+
+    for (auto it = hub_idmap.begin(); it != hub_idmap.end(); ++it)
+    {
+        int64_t hub_id = it->first;
+        size_t loc = it->second;
+        hub_counts.insert({hub_id, flat_hub_counts[loc]});
+    }
+
+    return hub_counts;
+}
+
 void DistCoverTree::build_tree(bool verbose)
 {
     int myrank, nprocs;
