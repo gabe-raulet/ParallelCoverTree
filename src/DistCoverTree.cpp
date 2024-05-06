@@ -107,6 +107,8 @@ void DistCoverTree::build_tree(bool verbose)
 
     assert(!hub_chains.empty());
     collect_replicate_points(verbose);
+
+    build_local_trees(hub_assignments, verbose);
 }
 
 void DistCoverTree::print_timing_results() const
@@ -772,5 +774,106 @@ void DistCoverTree::collect_replicate_points(bool verbose)
     if (!myrank && verbose)
     {
         fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (collect_replicate_points) [num_points=%lu]\n", timer.get_max_time(), timer.get_avg_time(), repoints.size());
+    }
+}
+
+void DistCoverTree::build_local_trees(const unordered_map<int64_t, int>& hub_assignments, bool verbose)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<vector<int64_t>> hub_ids_sendbufs(nprocs);
+    vector<vector<int64_t>> pt_ids_sendbufs(nprocs);
+    vector<vector<Point>> pt_sendbufs(nprocs);
+    vector<int> sendcounts(nprocs, 0), sdispls(nprocs);
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        int64_t hub_id = my_hub_vtx_ids[i];
+
+        if (hub_id >= 0)
+        {
+            if (pt[hub_id] != i + myoffset)
+            {
+                int rank = hub_assignments.find(hub_id)->second;
+                hub_ids_sendbufs[rank].push_back(hub_id);
+                pt_ids_sendbufs[rank].push_back(myoffset + i);
+                pt_sendbufs[rank].push_back(mypoints[i]);
+                sendcounts[rank]++;
+            }
+        }
+    }
+
+    sdispls.front() = 0;
+    partial_sum(sendcounts.begin(), sendcounts.end()-1, sdispls.begin()+1);
+
+    vector<int64_t> hub_ids_sendbuf;
+    vector<int64_t> pt_ids_sendbuf;
+    vector<Point> pt_sendbuf;
+
+    for (int i = 0; i < nprocs; ++i)
+    {
+        hub_ids_sendbuf.insert(hub_ids_sendbuf.end(), hub_ids_sendbufs[i].begin(), hub_ids_sendbufs[i].end());
+        pt_ids_sendbuf.insert(pt_ids_sendbuf.end(), pt_ids_sendbufs[i].begin(), pt_ids_sendbufs[i].end());
+        pt_sendbuf.insert(pt_sendbuf.end(), pt_sendbufs[i].begin(), pt_sendbufs[i].end());
+    }
+
+    vector<int> recvcounts(nprocs), rdispls(nprocs);
+
+    MPI_Alltoall(sendcounts.data(), 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    rdispls.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, rdispls.begin()+1);
+
+    vector<Point> pt_recvbuf(recvcounts.back() + rdispls.back());
+    vector<int64_t> hub_ids_recvbuf(recvcounts.back() + rdispls.back());
+    vector<int64_t> pt_ids_recvbuf(recvcounts.back() + rdispls.back());
+
+    MPI_Datatype MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+
+    MPI_Alltoallv(pt_sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_POINT,
+                  pt_recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_POINT, comm);
+
+    MPI_Alltoallv(hub_ids_sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_INT64_T,
+                  hub_ids_recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_INT64_T, comm);
+
+    MPI_Alltoallv(pt_ids_sendbuf.data(), sendcounts.data(), sdispls.data(), MPI_INT64_T,
+                  pt_ids_recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_INT64_T, comm);
+
+    MPI_Type_free(&MPI_POINT);
+
+    local_ptid_map.clear(), local_trees.clear();
+    unordered_map<int64_t, vector<Point>> local_pt_map;
+    unordered_set<int64_t> hub_idset(hub_ids_recvbuf.begin(), hub_ids_recvbuf.end());
+
+    for (int64_t hub_id : hub_idset)
+    {
+        local_ptid_map.insert({hub_id, {pt[hub_id]}});
+        local_pt_map.insert({hub_id, {repoints.find(pt[hub_id])->second}});
+    }
+
+    for (int64_t i = 0; i < pt_recvbuf.size(); ++i)
+    {
+        Point p = pt_recvbuf[i];
+        int64_t hub_id = hub_ids_recvbuf[i];
+        int64_t pt_id = pt_ids_recvbuf[i];
+
+        vector<int64_t>& ptids = local_ptid_map.find(hub_id)->second;
+        vector<Point>& pts = local_pt_map.find(hub_id)->second;
+
+        ptids.push_back(pt_id);
+        pts.push_back(p);
+    }
+
+    for (auto it = local_ptid_map.begin(); it != local_ptid_map.end(); ++it)
+    {
+        local_trees.insert({it->first, CoverTree(local_pt_map.find(it->first)->second, base)});
+    }
+
+    for (auto it = local_trees.begin(); it != local_trees.end(); ++it)
+    {
+        it->second.build_tree(true);
     }
 }
