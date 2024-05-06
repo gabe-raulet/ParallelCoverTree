@@ -109,8 +109,6 @@ void DistCoverTree::build_tree(bool verbose)
     collect_replicate_points(verbose);
 
     build_local_trees(hub_assignments, verbose);
-
-    dump_info();
 }
 
 void DistCoverTree::print_timing_results() const
@@ -638,6 +636,80 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
     }
 }
 
+vector<int64_t> DistCoverTree::my_radii_query(const Point& query, double radius) const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    unordered_set<int64_t> idset;
+    vector<int64_t> stack = {0};
+    vector<int64_t> local_tree_ids;
+
+    while (!stack.empty())
+    {
+        int64_t u = stack.back(); stack.pop_back();
+        auto it = local_trees.find(u);
+
+        if (it == local_trees.end())
+        {
+            assert(repoints.find(pt[u]) != repoints.end());
+            Point pt_u = repoints.find(pt[u])->second;
+
+            if (query.distance(pt_u) <= radius)
+                idset.insert(pt[u]);
+
+            double compare_radius = radius + max_radius * (vertex_ball_radius(u) / base);
+
+            for (int64_t v : children[u])
+            {
+                assert(repoints.find(pt[v]) != repoints.end());
+                Point pt_v = repoints.find(pt[v])->second;
+
+                if (query.distance(pt_v) <= compare_radius)
+                    stack.push_back(v);
+            }
+        }
+        else
+        {
+            local_tree_ids.push_back(u);
+        }
+    }
+
+    for (int64_t tree_id : local_tree_ids)
+    {
+        const CoverTree& tree = local_trees.find(tree_id)->second;
+        const vector<int64_t>& ptids = local_ptid_map.find(tree_id)->second;
+        vector<int64_t> ids = tree.radii_query(query, radius);
+        for_each(ids.begin(), ids.end(), [&](int64_t &id) { id = ptids[id]; });
+        idset.insert(ids.begin(), ids.end());
+    }
+
+    return vector<int64_t>(idset.begin(), idset.end());
+}
+
+vector<int64_t> allgather_distinct(const vector<int64_t>& mybuf, MPI_Comm comm)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<int> recvcounts(nprocs);
+    recvcounts[myrank] = mybuf.size();
+    MPI_Allgather(MPI_IN_PLACE, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    vector<int> displs(nprocs);
+    displs.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+    vector<int64_t> buf(recvcounts.back() + displs.back());
+
+    MPI_Allgatherv(mybuf.data(), recvcounts[myrank], MPI_INT64_T, buf.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
+
+    unordered_set<int64_t> buf2(buf.begin(), buf.end());
+    buf.assign(buf2.begin(), buf2.end());
+    return buf;
+}
+
 vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
 {
     int myrank, nprocs;
@@ -660,35 +732,20 @@ vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
     MPI_Allgatherv(mypoints.data(), recvcounts[myrank], MPI_POINT, allpoints.data(), recvcounts.data(), displs.data(), MPI_POINT, comm);
     MPI_Type_free(&MPI_POINT);
 
-    unordered_set<int64_t> idset;
-    vector<int64_t> stack;
-    vector<vector<int64_t>> my_edges(mysize);
+    vector<vector<int64_t>> my_edges(totsize);
 
-    for (int64_t i = 0; i < mysize; ++i)
+    for (int64_t i = 0; i < totsize; ++i)
     {
-        Point query = mypoints[i];
-        idset.clear();
-        stack.assign({0});
-
-        while (!stack.empty())
-        {
-            int64_t u = stack.back(); stack.pop_back();
-
-            if (query.distance(allpoints[pt[u]]) <= radius)
-                idset.insert(pt[u]);
-
-            double compare_radius = radius + max_radius * (vertex_ball_radius(u) / base);
-
-            for (int64_t v : children[u])
-                if (query.distance(allpoints[pt[v]]) <= compare_radius)
-                    stack.push_back(v);
-        }
-
-        my_edges[i].reserve(idset.size());
-        my_edges[i].assign(idset.begin(), idset.end());
+        my_edges[i] = my_radii_query(allpoints[i], radius);
     }
 
-    return my_edges;
+    for (int64_t i = 0; i < totsize; ++i)
+    {
+        my_edges[i] = allgather_distinct(my_edges[i], comm);
+    }
+
+    vector<vector<int64_t>> result_edges(my_edges.begin() + myoffset, my_edges.begin() + myoffset + mysize);
+    return result_edges;
 }
 
 pair<double, unordered_map<int64_t, int>> DistCoverTree::compute_hub_assignments(bool verbose) const

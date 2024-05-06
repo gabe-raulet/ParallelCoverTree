@@ -23,6 +23,7 @@ public:
     void print_timing_results() const;
 
     vector<vector<int64_t>> build_epsilon_graph(double radius) const;
+    vector<int64_t> my_radii_query(const Point& query, double radius) const;
 
 private:
     double max_radius, base;
