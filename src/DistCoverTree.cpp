@@ -94,7 +94,7 @@ void DistCoverTree::build_tree(bool verbose)
     double load_imbalance = numeric_limits<double>::max();
     unordered_map<int64_t, int> hub_assignments;
 
-    while (!hub_chains.empty())
+    while (!hub_chains.empty() && load_imbalance > 1.25)
     {
         niters++;
         compute_farthest_hub_pts(verbose);
@@ -104,6 +104,9 @@ void DistCoverTree::build_tree(bool verbose)
         update_dists_and_pointers(verbose);
         tie(load_imbalance, hub_assignments) = compute_hub_assignments(verbose);
     }
+
+    assert(!hub_chains.empty());
+    collect_replicate_points(verbose);
 }
 
 void DistCoverTree::print_timing_results() const
@@ -716,4 +719,58 @@ pair<double, unordered_map<int64_t, int>> DistCoverTree::compute_hub_assignments
     }
 
     return make_pair(load_imbalance, hub_assignments);
+}
+
+void DistCoverTree::collect_replicate_points(bool verbose)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
+    unordered_set<int64_t> pts(pt.begin(), pt.end());
+
+    vector<int64_t> my_pt_ids, pt_ids;
+    vector<Point> my_pt_buf, pt_buf;
+
+    for (int64_t id : pts)
+    {
+        if (myoffset <= id && id < myoffset + mysize)
+        {
+            my_pt_ids.push_back(id);
+            my_pt_buf.push_back(mypoints[id - myoffset]);
+        }
+    }
+
+    vector<int> recvcounts(nprocs), displs(nprocs);
+    recvcounts[myrank] = my_pt_ids.size();
+    MPI_Allgather(MPI_IN_PLACE, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+
+    displs.front() = 0;
+    partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+
+    pt_ids.resize(recvcounts.back() + displs.back());
+    pt_buf.resize(recvcounts.back() + displs.back());
+
+    MPI_Datatype MPI_POINT;
+    Point::create_mpi_dtype(&MPI_POINT);
+
+    MPI_Allgatherv(my_pt_buf.data(), recvcounts[myrank], MPI_POINT, pt_buf.data(), recvcounts.data(), displs.data(), MPI_POINT, comm);
+    MPI_Allgatherv(my_pt_ids.data(), recvcounts[myrank], MPI_INT64_T, pt_ids.data(), recvcounts.data(), displs.data(), MPI_INT64_T, comm);
+
+    MPI_Type_free(&MPI_POINT);
+
+    for (int64_t i = 0; i < pt_buf.size(); ++i)
+    {
+        repoints.insert({pt_ids[i], pt_buf[i]});
+    }
+
+    timer.stop_timer();
+
+    if (!myrank && verbose)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (collect_replicate_points) [num_points=%lu]\n", timer.get_max_time(), timer.get_avg_time(), repoints.size());
+    }
 }

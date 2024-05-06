@@ -27,6 +27,7 @@ public:
 private:
     double max_radius, base;
     vector<int64_t> pt, level;
+    unordered_map<int64_t, Point> repoints;
     vector<vector<int64_t>> children;
     unordered_map<int64_t, double> cover_map;
     int64_t niters, nlevels;
@@ -68,6 +69,7 @@ private:
 
     unordered_map<int64_t, int64_t> get_hub_counts() const;
     pair<double, unordered_map<int64_t, int>> compute_hub_assignments(bool verbose) const;
+    void collect_replicate_points(bool verbose = false);
 };
 
 #endif
