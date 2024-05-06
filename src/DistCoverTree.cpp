@@ -1070,3 +1070,43 @@ void DistCoverTree::dump_info() const
     s = ss.str();
     write_strings_to_file(s, "local_tree_info.txt", comm);
 }
+
+int64_t DistCoverTree::num_vertices() const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    int64_t num_verts = 0;
+
+    for (auto it = local_trees.begin(); it != local_trees.end(); ++it)
+    {
+        num_verts += it->second.num_vertices();
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, &num_verts, 1, MPI_INT64_T, MPI_SUM, comm);
+    num_verts += pt.size();
+
+    return num_verts;
+}
+
+int64_t DistCoverTree::num_levels() const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    int64_t num_levels = 0;
+
+    for (auto it = local_trees.begin(); it != local_trees.end(); ++it)
+    {
+        num_levels = max(num_levels, it->second.num_levels());
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, &num_levels, 1, MPI_INT64_T, MPI_MAX, comm);
+
+    num_levels += *max_element(level.begin(), level.end());
+
+    return num_levels + 1;
+}
+

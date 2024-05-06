@@ -87,7 +87,10 @@ int main(int argc, char *argv[])
 
     double graph_time = timer.get_max_time();
 
-    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", timer.get_max_time(), timer.get_avg_time(), tree.num_vertices(), tree.num_levels(), base);
+    int64_t num_vertices = tree.num_vertices();
+    int64_t num_levels = tree.num_levels();
+
+    if (!myrank) fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (dist_build_tree) [num_vertices=%lld,num_levels=%lld,base=%.2f]\n", timer.get_max_time(), timer.get_avg_time(), num_vertices, num_levels, base);
 
     if (skip_graph)
     {

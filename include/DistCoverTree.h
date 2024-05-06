@@ -17,8 +17,8 @@ public:
 
     void build_tree(bool verbose = false);
 
-    int64_t num_vertices() const { return pt.size(); }
-    int64_t num_levels() const {return *max_element(level.begin(), level.end()) + 1; }
+    int64_t num_vertices() const;
+    int64_t num_levels() const;
 
     void print_timing_results() const;
 
