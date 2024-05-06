@@ -783,6 +783,9 @@ void DistCoverTree::build_local_trees(const unordered_map<int64_t, int>& hub_ass
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
 
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
     vector<vector<int64_t>> hub_ids_sendbufs(nprocs);
     vector<vector<int64_t>> pt_ids_sendbufs(nprocs);
     vector<vector<Point>> pt_sendbufs(nprocs);
@@ -874,6 +877,24 @@ void DistCoverTree::build_local_trees(const unordered_map<int64_t, int>& hub_ass
 
     for (auto it = local_trees.begin(); it != local_trees.end(); ++it)
     {
-        it->second.build_tree(true);
+        it->second.build_tree();
+    }
+
+    timer.stop_timer();
+
+    vector<int64_t> num_trees;
+    if (!myrank) num_trees.resize(nprocs);
+    int64_t my_num_trees = local_trees.size();
+    MPI_Gather(&my_num_trees, 1, MPI_INT64_T, num_trees.data(), 1, MPI_INT64_T, 0, comm);
+
+    if (verbose && !myrank)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (build_local_trees)\n", timer.get_max_time(), timer.get_avg_time());
+
+        stringstream ss;
+        for (int i = 0; i < nprocs; ++i) ss << "[myrank=" << i << ",num_trees=" << num_trees[i] << "]\n";
+        string s = ss.str();
+        fprintf(stderr, "%s", s.c_str());
+        fflush(stderr);
     }
 }
