@@ -109,6 +109,8 @@ void DistCoverTree::build_tree(bool verbose)
     collect_replicate_points(verbose);
 
     build_local_trees(hub_assignments, verbose);
+
+    dump_info();
 }
 
 void DistCoverTree::print_timing_results() const
@@ -943,4 +945,71 @@ void DistCoverTree::dump_info() const
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
+
+    /*
+     * Print point info
+     */
+
+    stringstream ss;
+
+    if (!myrank) ss << "myrank\tpt_id\thub_id\tclosest_hub_pt_id\n";
+
+    for (int64_t i = 0; i < mysize; ++i)
+    {
+        ss << myrank << "\t" << i+myoffset << "\t" << my_hub_vtx_ids[i] << "\t" << my_hub_pt_ids[i] << "\n";
+    }
+
+    string s = ss.str();
+    write_strings_to_file(s, "point_info.txt", comm);
+
+    ss.str(string());
+
+    if (!myrank) ss << "myrank\thub_id\thub_pt_id\tchain_pt_id\n";
+
+    for (auto it = hub_chains.begin(); it != hub_chains.end(); ++it)
+    {
+        int64_t hub_id = it->first;
+        vector<int64_t> chain = it->second;
+
+        for (int64_t j = 0; j < chain.size(); ++j)
+        {
+            ss << myrank << "\t" << hub_id << "\t" << pt[hub_id] << "\t" << chain[j] << "\n";
+        }
+    }
+
+    s = ss.str();
+    write_strings_to_file(s, "hub_chain_info.txt", comm);
+
+    ss.str(string());
+
+    auto result = compute_hub_assignments(false);
+    auto hub_assignments = result.second;
+
+    if (!myrank) ss << "myrank\thub_id\trank_assignment\n";
+
+    for (auto it = hub_assignments.begin(); it != hub_assignments.end(); ++it)
+    {
+        ss << myrank << "\t" << it->first << "\t" << it->second << "\n";
+    }
+
+    s = ss.str();
+    write_strings_to_file(s, "hub_assignments_info.txt", comm);
+
+    ss.str(string());
+
+    if (!myrank) ss << "myrank\ttree_hub_id\tpt_id\n";
+
+    for (auto it = local_ptid_map.begin(); it != local_ptid_map.end(); ++it)
+    {
+        int64_t hub_id = it->first;
+        vector<int64_t> ptids = it->second;
+
+        for (int64_t j = 0; j < ptids.size(); ++j)
+        {
+            ss << myrank << "\t" << hub_id << "\t" << ptids[j] << "\n";
+        }
+    }
+
+    s = ss.str();
+    write_strings_to_file(s, "local_tree_info.txt", comm);
 }
