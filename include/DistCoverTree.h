@@ -74,6 +74,8 @@ private:
     pair<double, unordered_map<int64_t, int>> compute_hub_assignments(bool verbose) const;
     void collect_replicate_points(bool verbose = false);
     void build_local_trees(const unordered_map<int64_t, int>& hub_assignments, bool verbose = false);
+
+    void dump_info() const;
 };
 
 #endif

@@ -898,3 +898,49 @@ void DistCoverTree::build_local_trees(const unordered_map<int64_t, int>& hub_ass
         fflush(stderr);
     }
 }
+
+void write_strings_to_file(const string& mystr, const char *fname, MPI_Comm comm)
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+
+    vector<char> mybuf(mystr.begin(), mystr.end());
+    vector<char> buf;
+
+    int sendcount = mybuf.size();
+    vector<int> recvcounts, displs;
+
+    if (!myrank)
+    {
+        recvcounts.resize(nprocs);
+        displs.resize(nprocs);
+    }
+
+    MPI_Gather(&sendcount, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, 0, comm);
+
+    if (!myrank)
+    {
+        displs.front() = 0;
+        partial_sum(recvcounts.begin(), recvcounts.end()-1, displs.begin()+1);
+        buf.resize(recvcounts.back() + displs.back());
+    }
+
+    MPI_Gatherv(mybuf.data(), sendcount, MPI_CHAR, buf.data(), recvcounts.data(), displs.data(), MPI_CHAR, 0, comm);
+
+    if (!myrank)
+    {
+        FILE *f = fopen(fname, "w");
+        buf.push_back('\0');
+        fprintf(f, "%s", buf.data());
+    }
+
+    MPI_Barrier(comm);
+}
+
+void DistCoverTree::dump_info() const
+{
+    int myrank, nprocs;
+    MPI_Comm_rank(comm, &myrank);
+    MPI_Comm_size(comm, &nprocs);
+}
