@@ -678,6 +678,15 @@ vector<int64_t> allgather_distinct(const vector<int64_t>& mybuf, MPI_Comm comm)
 
 vector<vector<int64_t>> DistCoverTree::build_epsilon_graph(double radius) const
 {
+    /*
+     * for each point in each local tree run nearest neighbor query against
+     * the replicated portion of the tree to find how close together the
+     * various local trees are.
+     *
+     * build out temporary local trees based on radius value passed to avoid
+     * communication.
+     */
+
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
