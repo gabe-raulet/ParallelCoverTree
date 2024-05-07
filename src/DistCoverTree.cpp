@@ -636,58 +636,6 @@ void DistCoverTree::update_dists_and_pointers(bool verbose)
     }
 }
 
-vector<int64_t> DistCoverTree::my_radii_query(const Point& query, double radius) const
-{
-    int myrank, nprocs;
-    MPI_Comm_rank(comm, &myrank);
-    MPI_Comm_size(comm, &nprocs);
-
-    unordered_set<int64_t> idset;
-    vector<int64_t> stack = {0};
-    vector<int64_t> local_tree_ids;
-
-    while (!stack.empty())
-    {
-        int64_t u = stack.back(); stack.pop_back();
-        auto it = local_trees.find(u);
-
-        if (it == local_trees.end())
-        {
-            assert(repoints.find(pt[u]) != repoints.end());
-            Point pt_u = repoints.find(pt[u])->second;
-
-            if (query.distance(pt_u) <= radius)
-                idset.insert(pt[u]);
-
-            double compare_radius = radius + max_radius * (vertex_ball_radius(u) / base);
-
-            for (int64_t v : children[u])
-            {
-                assert(repoints.find(pt[v]) != repoints.end());
-                Point pt_v = repoints.find(pt[v])->second;
-
-                if (query.distance(pt_v) <= compare_radius)
-                    stack.push_back(v);
-            }
-        }
-        else
-        {
-            local_tree_ids.push_back(u);
-        }
-    }
-
-    for (int64_t tree_id : local_tree_ids)
-    {
-        const CoverTree& tree = local_trees.find(tree_id)->second;
-        const vector<int64_t>& ptids = local_ptid_map.find(tree_id)->second;
-        vector<int64_t> ids = tree.radii_query(query, radius);
-        for_each(ids.begin(), ids.end(), [&](int64_t &id) { id = ptids[id]; });
-        idset.insert(ids.begin(), ids.end());
-    }
-
-    return vector<int64_t>(idset.begin(), idset.end());
-}
-
 vector<int64_t> allgather_distinct(const vector<int64_t>& mybuf, MPI_Comm comm)
 {
     int myrank, nprocs;
@@ -1108,5 +1056,61 @@ int64_t DistCoverTree::num_levels() const
     num_levels += *max_element(level.begin(), level.end());
 
     return num_levels + 1;
+}
+
+unordered_set<int64_t> DistCoverTree::local_radii_query(const Point& query, double radius, vector<int64_t>& local_tree_ids) const
+{
+    unordered_set<int64_t> idset;
+    vector<int64_t> stack = {0};
+    local_tree_ids.clear();
+
+    while (!stack.empty())
+    {
+        int64_t u = stack.back(); stack.pop_back();
+        auto it = local_trees.find(u);
+
+        if (it == local_trees.end())
+        {
+            assert(repoints.find(pt[u]) != repoints.end());
+            Point pt_u = repoints.find(pt[u])->second;
+
+            if (query.distance(pt_u) <= radius)
+                idset.insert(pt[u]);
+
+            double compare_radius = radius + max_radius * (vertex_ball_radius(u) / base);
+
+            for (int64_t v : children[u])
+            {
+                assert(repoints.find(pt[v]) != repoints.end());
+                Point pt_v = repoints.find(pt[v])->second;
+
+                if (query.distance(pt_v) <= compare_radius)
+                    stack.push_back(v);
+            }
+        }
+        else
+        {
+            local_tree_ids.push_back(u);
+        }
+    }
+
+    return idset;
+}
+
+vector<int64_t> DistCoverTree::my_radii_query(const Point& query, double radius) const
+{
+    vector<int64_t> local_tree_ids;
+    unordered_set<int64_t> idset = local_radii_query(query, radius, local_tree_ids);
+
+    for (int64_t tree_id : local_tree_ids)
+    {
+        const CoverTree& tree = local_trees.find(tree_id)->second;
+        const vector<int64_t>& ptids = local_ptid_map.find(tree_id)->second;
+        vector<int64_t> ids = tree.radii_query(query, radius);
+        for_each(ids.begin(), ids.end(), [&](int64_t &id) { id = ptids[id]; });
+        idset.insert(ids.begin(), ids.end());
+    }
+
+    return vector<int64_t>(idset.begin(), idset.end());
 }
 

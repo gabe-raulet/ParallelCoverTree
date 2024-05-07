@@ -23,7 +23,6 @@ public:
     void print_timing_results() const;
 
     vector<vector<int64_t>> build_epsilon_graph(double radius) const;
-    vector<int64_t> my_radii_query(const Point& query, double radius) const;
 
 private:
     double max_radius, base;
@@ -77,6 +76,9 @@ private:
     void build_local_trees(const unordered_map<int64_t, int>& hub_assignments, bool verbose = false);
 
     void dump_info() const;
+
+    vector<int64_t> my_radii_query(const Point& query, double radius) const;
+    unordered_set<int64_t> local_radii_query(const Point& query, double radius, vector<int64_t>& local_tree_ids) const;
 };
 
 #endif
