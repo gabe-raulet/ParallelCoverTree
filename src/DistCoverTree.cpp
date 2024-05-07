@@ -82,19 +82,23 @@ unordered_map<int64_t, int64_t> DistCoverTree::get_hub_counts() const
     return hub_counts;
 }
 
-void DistCoverTree::build_tree(bool verbose)
+void DistCoverTree::build_tree(double target_imbalance, bool verbose)
 {
     int myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
     MPI_Comm_size(comm, &nprocs);
 
     set_times_to_zero();
+
+    MPITimer timer(comm, 0);
+    timer.start_timer();
+
     initialize_root_hub(verbose);
 
     double load_imbalance = numeric_limits<double>::max();
     unordered_map<int64_t, int> hub_assignments;
 
-    while (!hub_chains.empty() && load_imbalance > 1.25)
+    while (!hub_chains.empty() && load_imbalance > target_imbalance)
     {
         niters++;
         compute_farthest_hub_pts(verbose);
@@ -108,7 +112,21 @@ void DistCoverTree::build_tree(bool verbose)
     assert(!hub_chains.empty());
     collect_replicate_points(verbose);
 
+    timer.stop_timer();
+
+    if (!myrank && verbose)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (replication_phase)\n", timer.get_max_time(), timer.get_avg_time());
+    }
+
+    timer.start_timer();
     build_local_trees(hub_assignments, verbose);
+    timer.stop_timer();
+
+    if (!myrank && verbose)
+    {
+        fprintf(stderr, "[maxtime=%.4f,avgtime=%.4f] :: (local_tree_phase)\n", timer.get_max_time(), timer.get_avg_time());
+    }
 }
 
 void DistCoverTree::print_timing_results() const

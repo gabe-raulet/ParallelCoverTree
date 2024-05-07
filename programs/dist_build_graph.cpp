@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
     char *ifname = NULL;
     char *ofname = NULL;
     double base = 2.0;
+    double imbalance = 1.25;
     bool verbose = false;
     bool skip_graph = false;
 
@@ -37,6 +38,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Options: -i FILE   input filename [required]\n");
             fprintf(stderr, "         -r FLOAT  radius [required]\n");
             fprintf(stderr, "         -C FLOAT  cover base [default: %.2f]\n", base);
+            fprintf(stderr, "         -I FLOAT  local phase imbalance cutoff [default: %.2f]\n", imbalance);
             fprintf(stderr, "         -o FILE   output filename\n");
             fprintf(stderr, "         -S        skip graph construction\n");
             fprintf(stderr, "         -v        verbose\n");
@@ -49,6 +51,7 @@ int main(int argc, char *argv[])
 
     ifname = read_string_arg(argc, argv, "-i", NULL);
     base = read_double_arg(argc, argv, "-C", &base);
+    imbalance = read_double_arg(argc, argv, "-I", &imbalance);
     verbose = (find_arg_idx(argc, argv, "-v") >= 0);
     skip_graph = (find_arg_idx(argc, argv, "-S") >= 0);
 
@@ -80,7 +83,7 @@ int main(int argc, char *argv[])
     timer.start_timer();
 
     DistCoverTree tree(mypoints, base, MPI_COMM_WORLD);
-    tree.build_tree(verbose);
+    tree.build_tree(imbalance, verbose);
 
     timer.stop_timer();
     tree.print_timing_results();

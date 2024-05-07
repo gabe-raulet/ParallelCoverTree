@@ -15,7 +15,7 @@ class DistCoverTree
 public:
     DistCoverTree(const vector<Point>& mypoints, double base, MPI_Comm comm);
 
-    void build_tree(bool verbose = false);
+    void build_tree(double target_imbalance, bool verbose = false);
 
     int64_t num_vertices() const;
     int64_t num_levels() const;
