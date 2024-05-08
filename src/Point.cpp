@@ -4,12 +4,13 @@
 #include <sstream>
 #include <iomanip>
 #include <numeric>
+#include <filesystem>
+
+namespace fs = filesystem;
 
 Point::Point() : data{} {}
 Point::Point(const float *p) { copy(p, p + dim, data); }
 Point::Point(const Point& rhs) : Point(rhs.data) {}
-
-void Point::fill_dest(float *dest) const { copy(data, data + dim, dest); }
 
 Point& Point::operator=(const Point& rhs)
 {
@@ -111,52 +112,48 @@ vector<Point> Point::dist_random_points(int64_t num_points, double var, int seed
 
 vector<Point> Point::from_file(const char *fname)
 {
-    int64_t n;
+    size_t filesize, n;
+    int d;
     FILE *f;
-    vector<float> point_data;
+    fs::path path;
     vector<Point> points;
+    float buf[dim];
 
-    f = fopen(fname, "r");
-    assert(f != NULL);
+    path = fname;
+    filesize = fs::file_size(path);
 
-    fread(&n, sizeof(int64_t), 1, f);
-    point_data.resize(n*dim);
-    fread(point_data.data(), sizeof(float), dim*n, f);
-    fclose(f);
+    f = fopen(fname, "rb");
+    fread(&d, sizeof(int), 1, f);
+    assert(d == dim);
+    fseek(f, SEEK_SET, 0);
+    n = filesize / (4*(dim+1));
 
     points.reserve(n);
 
-    for (int64_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i)
     {
-        points.emplace_back(&point_data[i*dim]);
+        fread(&d, sizeof(int), 1, f);
+        fread(buf, sizeof(float), dim, f);
+        points.emplace_back(buf);
     }
 
+    fclose(f);
     return points;
 }
 
 void Point::to_file(const vector<Point>& points, const char *fname)
 {
-    int64_t n;
+    size_t n;
     FILE *f;
-    vector<float> point_data;
-    float *dest;
 
     n = points.size();
-    point_data.resize(n*dim);
-    dest = point_data.data();
+    f = fopen(fname, "wb");
 
-    for (int64_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i)
     {
-        const Point& p = points[i];
-        p.fill_dest(dest);
-        dest += dim;
+        fwrite(&dim, sizeof(int), 1, f);
+        fwrite(points[i].getdata(), sizeof(float), dim, f);
     }
-
-    f = fopen(fname, "w");
-    assert(f != NULL);
-
-    fwrite(&n, sizeof(int64_t), 1, f);
-    fwrite(point_data.data(), sizeof(float), dim*n, f);
 
     fclose(f);
 }

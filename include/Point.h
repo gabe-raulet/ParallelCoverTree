@@ -28,7 +28,7 @@ public:
     double distance(const Point& rhs) const;
     friend double distance(const Point& p, const Point& q);
 
-    void fill_dest(float *dest) const;
+    const float* getdata() const { return &data[0]; }
 
     static void create_mpi_dtype(MPI_Datatype *MPI_POINT);
 
