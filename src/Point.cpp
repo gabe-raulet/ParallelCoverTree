@@ -5,10 +5,11 @@
 #include <iomanip>
 #include <numeric>
 
-Point::Point() { data[0] = data[1] = 0; }
-Point::Point(const float *p) { data[0] = p[0], data[1] = p[1]; }
+Point::Point() : data{} {}
+Point::Point(const float *p) { copy(p, p + dim, data); }
 Point::Point(const Point& rhs) : Point(rhs.data) {}
-Point::Point(const pair<float, float>& p) { data[0] = p.first, data[1] = p.second; }
+
+void Point::fill_dest(float *dest) const { copy(data, data + dim, dest); }
 
 Point& Point::operator=(const Point& rhs)
 {
@@ -24,9 +25,15 @@ void Point::swap(Point& rhs)
 
 double Point::distance(const Point& rhs) const
 {
-    double dx = data[0] - rhs.data[0];
-    double dy = data[1] - rhs.data[1];
-    return sqrt(dx*dx + dy*dy);
+    double sum = 0.0, delta;
+
+    for (int i = 0; i < dim; ++i)
+    {
+        delta = data[i] - rhs.data[i];
+        sum += delta *delta;
+    }
+
+    return sqrt(sum);
 }
 
 double distance(const Point& p, const Point& q)
@@ -36,7 +43,7 @@ double distance(const Point& p, const Point& q)
 
 vector<Point> Point::random_points(int64_t num_points, double var, int seed)
 {
-    vector<float> point_data(num_points * Point::dim);
+    vector<float> point_data(num_points * dim);
     vector<Point> points;
 
     default_random_engine gen(17*seed);
@@ -46,14 +53,14 @@ vector<Point> Point::random_points(int64_t num_points, double var, int seed)
     points.reserve(num_points);
 
     for (int64_t i = 0; i < num_points; ++i)
-        points.emplace_back(&point_data[i*Point::dim]);
+        points.emplace_back(&point_data[i*dim]);
 
     return points;
 }
 
 void Point::create_mpi_dtype(MPI_Datatype *MPI_POINT)
 {
-    MPI_Type_contiguous(2, MPI_FLOAT, MPI_POINT);
+    MPI_Type_contiguous(dim, MPI_FLOAT, MPI_POINT);
     MPI_Type_commit(MPI_POINT);
 }
 
@@ -142,7 +149,7 @@ void Point::to_file(const vector<Point>& points, const char *fname)
     {
         const Point& p = points[i];
         p.fill_dest(dest);
-        dest += 2;
+        dest += dim;
     }
 
     f = fopen(fname, "w");
@@ -152,11 +159,4 @@ void Point::to_file(const vector<Point>& points, const char *fname)
     fwrite(point_data.data(), sizeof(float), dim*n, f);
 
     fclose(f);
-}
-
-string Point::repr() const
-{
-    stringstream ss;
-    ss << "[" << setprecision(3) << data[0] << ", " << data[1] << "]";
-    return ss.str();
 }

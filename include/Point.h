@@ -20,7 +20,6 @@ public:
     Point();
     Point(const float *p);
     Point(const Point& rhs);
-    Point(const pair<float, float>& p);
 
     Point& operator=(const Point& rhs);
 
@@ -28,12 +27,8 @@ public:
 
     double distance(const Point& rhs) const;
     friend double distance(const Point& p, const Point& q);
-    friend bool operator==(const Point& lhs, const Point& rhs) { return lhs.data[0] == rhs.data[0] && lhs.data[1] == rhs.data[1]; }
-    friend bool operator!=(const Point& lhs, const Point& rhs) { return !(lhs == rhs); }
 
-    void fill_dest(float *dest) const { dest[0] = data[0], dest[1] = data[1]; }
-
-    string repr() const;
+    void fill_dest(float *dest) const;
 
     static void create_mpi_dtype(MPI_Datatype *MPI_POINT);
 
@@ -44,12 +39,6 @@ public:
 
     static vector<Point> from_file(const char *fname);
     static void to_file(const vector<Point>& points, const char *fname);
-
-    friend ostream& operator<<(ostream& os, const Point& pt)
-    {
-        os << setprecision(3) << "[" << pt.data[0] << ", " << pt.data[1] << "]";
-        return os;
-    }
 
 private:
     float data[dim];
