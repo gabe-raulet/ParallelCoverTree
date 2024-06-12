@@ -1,12 +1,6 @@
-*.dSYM
-*.out
-*.o
-*.bin
-*.swp
-epsilon_graph
-dist_epsilon_graph
+main
 create_points
-build_graph
-dist_build_graph
-sgtree
-version.h
+build_rgraph
+graph_diff
+*.dSYM
+*.swp

@@ -1,45 +1,29 @@
 D?=0
-UNAME_S:=$(shell uname -s)
+DIM?=2
+FP?=32
+CXX=mpic++
+FLAGS=-std=c++20 -I./include -I./misc -DPOINT_DIM=$(DIM) -DFPSIZE=$(FP)
 
 ifeq ($(D),1)
-FLAGS=-fopenmp -O0 -g -std=c++17 -pedantic
-MPIFLAGS=-O0 -g -std=c++17 -fsanitize=address -fno-omit-frame-pointer
+FLAGS+=-O0 -g -fsanitize=address -fno-omit-frame-pointer
 else
-FLAGS=-fopenmp -O2 -std=c++17
-MPIFLAGS=-O2 -std=c++17
+FLAGS+=-O2
 endif
 
-ifeq ($(UNAME_S), Linux)
-CXX=g++
-MPICXX=mpic++
-FLAGS+=-fsanitize=address -fno-omit-frame-pointer
-else
-CXX=g++-13
-MPICXX=mpic++
-endif
+all: create_points build_rgraph graph_diff
 
-INCLUDES=-I./include
+create_points: create_points.cpp include/common.h include/ptraits.h include/ptraits.hpp include/timers.h
+	$(CXX) -o $@ $(FLAGS) $<
 
-all: create_points build_graph dist_build_graph
+build_rgraph: build_rgraph.cpp include/mpi_comm.h include/mpi_comm.hpp include/bforce.h include/bforce.hpp include/cover_tree.h include/cover_tree.hpp include/common.h include/ptraits.h include/ptraits.hpp include/timers.h
+	$(CXX) -o $@ $(FLAGS) $<
 
-install: create_points build_graph dist_build_graph
-	cp create_points /global/homes/g/gabeh98/software/cover_tree
-	cp build_graph /global/homes/g/gabeh98/software/cover_tree
-	cp dist_build_graph /global/homes/g/gabeh98/software/cover_tree
-
-.PHONY: version.h
-
-version.h:
-	@echo "#define GIT_COMMIT \"$(shell git describe --always --dirty --match 'NOT A TAG')\"" > include/version.h
-
-create_points: programs/create_points.cpp src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
-	$(MPICXX) -o create_points $(INCLUDES) $(MPIFLAGS) programs/create_points.cpp src/Point.cpp src/read_args.cpp
-
-build_graph: programs/build_graph.cpp src/CoverTree.cpp include/CoverTree.h src/Point.cpp include/Point.h include/MyTimer.h src/read_args.cpp include/read_args.h version.h
-	$(MPICXX) -o build_graph $(INCLUDES) $(MPIFLAGS) programs/build_graph.cpp src/CoverTree.cpp src/Point.cpp src/read_args.cpp
-
-dist_build_graph: programs/dist_build_graph.cpp src/DistCoverTree.cpp include/DistCoverTree.h src/CoverTree.cpp include/CoverTree.h src/Point.cpp include/Point.h src/MPITimer.cpp include/MPITimer.h src/read_args.cpp include/read_args.h version.h
-	$(MPICXX) -o dist_build_graph $(INCLUDES) $(MPIFLAGS) programs/dist_build_graph.cpp src/DistCoverTree.cpp src/CoverTree.cpp src/Point.cpp src/MPITimer.cpp src/read_args.cpp
+graph_diff: graph_diff.cpp include/timers.h
+	$(CXX) -o $@ $(FLAGS) $<
 
 clean:
-	rm -rf *.dSYM *.bin *.fvecs create_points build_graph dist_build_graph version.h
+	rm -rf *.dSYM create_points build_rgraph graph_diff
+
+dclean: clean
+	git clean -f
+
