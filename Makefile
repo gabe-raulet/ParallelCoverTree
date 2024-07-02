@@ -1,29 +1,29 @@
-D?=0
-DIM?=2
-FP?=32
+DEBUG?=0
+D?=2
+R?=32
 CXX=mpic++
-FLAGS=-std=c++20 -I./include -I./misc -DPOINT_DIM=$(DIM) -DFPSIZE=$(FP)
+FLAGS=-std=c++20 -DPTDIM=$(D) -DFPSIZE=$(R)
+INCS=-I./include
 
-ifeq ($(D),1)
-FLAGS+=-O0 -g -fsanitize=address -fno-omit-frame-pointer
+ifeq ($(DEBUG),1)
+FLAGS+=-DDEBUG -O0 -g -fsanitize=address -fno-omit-frame-pointer
 else
 FLAGS+=-O2
 endif
 
-all: create_points build_rgraph graph_diff
+all: genpoints build_rgraph graph_diff
 
-create_points: create_points.cpp include/common.h include/ptraits.h include/ptraits.hpp include/timers.h
-	$(CXX) -o $@ $(FLAGS) $<
+genpoints: genpoints.cpp include
+	$(CXX) -o $@ $(FLAGS) $(INCS) $<
+	@chmod 777 $@
 
-build_rgraph: build_rgraph.cpp include/mpi_comm.h include/mpi_comm.hpp include/bforce.h include/bforce.hpp include/cover_tree.h include/cover_tree.hpp include/common.h include/ptraits.h include/ptraits.hpp include/timers.h
-	$(CXX) -o $@ $(FLAGS) $<
+build_rgraph: build_rgraph.cpp include
+	$(CXX) -o $@ $(FLAGS) $(INCS) $<
+	@chmod 777 $@
 
-graph_diff: graph_diff.cpp include/timers.h
-	$(CXX) -o $@ $(FLAGS) $<
+graph_diff: graph_diff.cpp include
+	$(CXX) -o $@ $(FLAGS) $(INCS) $<
+	@chmod 777 $@
 
 clean:
-	rm -rf *.dSYM create_points build_rgraph graph_diff
-
-dclean: clean
-	git clean -f
-
+	rm -rf *.dSYM genpoints build_rgraph graph_diff

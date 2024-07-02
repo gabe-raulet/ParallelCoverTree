@@ -1,10 +1,7 @@
 #include <vector>
-#include <fstream>
-#include <sstream>
-#include <string>
 #include <stdio.h>
-#include "hrfsize.h"
-#include "timers.h"
+#include "misc.h"
+#include "timer.h"
 
 using namespace std;
 
@@ -12,12 +9,12 @@ using Index = int64_t;
 using IndexVector = vector<Index>;
 using IndexVectorVector = vector<IndexVector>;
 
-Index read_graph_file(IndexVectorVector& graph, const char *infname);
+Index read_graph_file(IndexVectorVector& graph, const char *fname);
 void compare_graphs(const IndexVectorVector& graph1, Index m1, const IndexVectorVector& graph2, Index m2);
 
 int main(int argc, char *argv[])
 {
-    LocalTimer timer;
+    LocalTimer<double> timer;
     timer.start_timer();
 
     if (argc != 3)
@@ -36,16 +33,13 @@ int main(int argc, char *argv[])
 
     timer.stop_timer();
 
-    fprintf(stderr, "[time=%.3f,msg::%s] command:", timer.get_elapsed(), __func__);
-    for (int i = 0; i < argc; ++i) fprintf(stderr, " %s", argv[i]);
-    fprintf(stderr, "\n");
-
+    main_msg(argc, argv, timer.get_elapsed());
     return 0;
 }
 
 Index read_graph_file(IndexVectorVector& graph, const char *infname)
 {
-    LocalTimer timer;
+    LocalTimer<double> timer;
     timer.start_timer();
 
     graph.clear();
@@ -73,13 +67,13 @@ Index read_graph_file(IndexVectorVector& graph, const char *infname)
 
     timer.stop_timer();
 
-    fprintf(stderr, "[time=%.3f,msg::%s] read file '%s' [num_vertices=%lld,num_edges=%lld,size=%s]\n", timer.get_elapsed(), __func__, infname, n, m, HumanReadable::str(infname).c_str());
+    fprintf(stderr, "[time=%.3f,msg::%s] read file '%s' [num_vertices=%lld,num_edges=%lld,size=%s]\n", timer.get_elapsed(), __func__, infname, n, m, PrettyFileSize::str(infname).c_str());
     return m;
 }
 
 void compare_graphs(const IndexVectorVector& graph1, Index m1, const IndexVectorVector& graph2, Index m2)
 {
-    LocalTimer timer;
+    LocalTimer<double> timer;
     timer.start_timer();
 
     Index n1 = graph1.size();

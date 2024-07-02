@@ -1,52 +1,99 @@
-#ifndef PTRAITS_H_
-#define PTRAITS_H_
+#ifndef POINT_TRAITS_H_
+#define POINT_TRAITS_H_
 
 #include <array>
-#include <fstream>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include <algorithm>
 #include <type_traits>
+#include <iterator>
+#include <iomanip>
+#include "mpi_env.h"
+#include "misc.h"
 
 using namespace std;
 
-/*
- * The Traits class defines all the necessary information and routines
- * to work with point data that can be represented as fixed-size array
- * of floating-point numbers. The template parameters Real and D define
- * the underlying floating point type (either float or double) and the
- * dimensionality of points, respectively.
- *
- * Particularly important are the distance() function, which returns
- * a Distance functor that can be used to compute the metric distance
- * between two points. A type declaration for the Point type is also
- * provided.
- *
- * Also useful are the fill_random routines (for generating random points
- * with user-provided RNG distributions and generators, as well as
- * methods for reading and writing points to disk.
- */
+template <class R>
+concept float_type = same_as<R, float> || same_as<R, double>;
 
-template <class Real, int D>
+template <int D>
+concept is_pos_int = (D >= 1);
+
+template <class R, int D>
+struct point_type { using Point = array<R, D>; };
+
+template <class R>
+struct point_type<R, 1> { using Point = R; };
+
+template <float_type R, int D> requires is_pos_int<D>
 struct Traits
 {
-    static_assert(is_same_v<Real, float> || is_same_v<Real, double>);
+    using Real = R;
+    using Point = typename point_type<Real, D>::Point;
+    using SerializedPoint = array<char, sizeof(int) + sizeof(Point)>;
 
-    using Point = array<Real, D>;
-
-    struct Distance { Real operator()(const Point& p, const Point& q); };
+    struct Distance { R operator()(const Point& p, const Point& q); };
     static Distance distance() { return Distance(); }
-    static int dimension() { return D; }
-    static string name();
+    static consteval int dimension() { return D; }
+
+    static void pack_serialized_point(SerializedPoint& record, const Point& p);
+    static void unpack_serialized_point(const SerializedPoint& record, Point& p);
+
+    template <class Iter>
+    static void read_from_file(Iter d_first, const char *fname);
+
+    template <class Iter>
+    static void read_from_file(Iter d_first, const char *fname, MPIEnv::Comm comm);
+
+    template <class Iter>
+    static void read_from_mem(Iter d_first, const vector<char>& mem);
+
+    template <class Iter>
+    static void write_to_file(Iter first, Iter last, const char *fname);
+
+    template <class Iter>
+    static void write_to_file(Iter first, Iter last, const char *fname, MPIEnv::Comm comm);
+
+    template <class Iter>
+    static void write_to_mem(Iter first, Iter last, vector<char>& mem);
 
     template <class RandomGen, class RandomDist>
-    static void fill_random(Point& point, RandomGen& gen, RandomDist& dist);
+    static void fill_random_point(Point& point, RandomGen& gen, RandomDist& dist);
 
-    template <class RandomGen, class RandomDist>
-    static void fill_random_vec(vector<Point>& points, RandomGen& gen, RandomDist& dist);
+    template <class Iter, class RandomGen, class RandomDist>
+    static void fill_random_points(Iter first, Iter last, RandomGen& gen, RandomDist& dist);
 
-    static void write_to_file(const vector<Point>& points, const char *outfname);
-    static void read_from_file(vector<Point>& points, const char *infname);
+    static string repr(const Point& point, int precision=3);
+
+    struct PointHash { size_t operator()(const Point& p) const noexcept; };
+};
+
+template <int FP>
+struct select_real { using Real = float; };
+
+template <>
+struct select_real<64> { using Real = double; };
+
+template <int DIM>
+struct select_dim;
+
+template <int DIM> requires (DIM >= 1)
+struct select_dim<DIM>
+{
+    static consteval int dim() { return DIM; }
+};
+
+template <int DIM> requires (DIM <= 0)
+struct select_dim<DIM>
+{
+    static consteval int dim() { return 2; }
+};
+
+template <int FP, int DIM>
+struct SelectPoint
+{
+    using Traits = Traits<typename select_real<FP>::Real, select_dim<DIM>::dim()>;
 };
 
 #include "ptraits.hpp"

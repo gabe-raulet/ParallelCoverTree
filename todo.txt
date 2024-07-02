@@ -1,0 +1,16 @@
+The most obvious path right now is for me to
+
+    (1) collect a few synthetic and real datasets with varying dimensions and distributions
+    (2) randomly sample subsets of varying sizes from them
+    (3) run the serial construction algorithm on each subsample, timing all of them and
+    (4) compare the relative runtimes of each subsample to a few different workload estimates.
+
+The initial workload estimates would be
+
+    (a) naive estimate using number of points,
+    (b) weighted estimate using number of points divided by cover tree hub radius.
+        Because the power diagram idea will result in a different method of partitioning hubs,
+        it is somewhat orthogonal to the workload estimate function plan, but plan
+    (c) would be to use the power diagram partitioning (as opposed to plain Voronoi cells),
+        and then estimate workloads again using (a) and (b). So basically, there would be
+        4 different scenarios to test.
